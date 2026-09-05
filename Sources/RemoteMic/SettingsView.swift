@@ -4,6 +4,9 @@ import Combine
 import CoreBluetooth
 import SayAllMacRemoteCore
 import SayAllMacRemoteUI
+#if canImport(SayAllSiriRemote)
+import SayAllSiriRemote
+#endif
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -197,6 +200,7 @@ struct SettingsView: View {
 
     @State private var selectedSection: SettingsSection
     @State private var selectedRemoteButton: RemoteButton = .ok
+    @State private var selectedSiriRemoteControlID = "select"
     @State private var isMappingSelectionLocked = true
     @State private var selectedUsagePeriod: UsageStatisticsPeriod = .today
     @State private var mappingEditingTarget: ShortcutEditingTarget?
@@ -583,7 +587,15 @@ struct SettingsView: View {
                 aboutPage
             }
         case .mapping:
-            mappingPage
+            if settings.selectedRemoteProfile?.model == .appleSiriRemoteA2854 {
+                #if canImport(SayAllSiriRemote)
+                siriRemoteMappingPage
+                #else
+                mappingPage
+                #endif
+            } else {
+                mappingPage
+            }
         case .statistics:
             statisticsPage
         case .transcripts:
@@ -991,6 +1003,110 @@ struct SettingsView: View {
             }
         }
     }
+
+    #if canImport(SayAllSiriRemote)
+    private var siriRemoteMappingPage: some View {
+        VStack(spacing: 0) {
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .center, spacing: 14) {
+                    PageHeader(title: localization.text("button_mapping.page.title"))
+                        .fixedSize(horizontal: true, vertical: false)
+                    mappingHeaderToggle
+                    Spacer()
+                    remoteDeviceSelector()
+                        .frame(width: 400)
+                }
+                HStack(alignment: .center, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        PageHeader(title: localization.text("button_mapping.page.title"))
+                            .fixedSize(horizontal: true, vertical: false)
+                        mappingHeaderToggle
+                    }
+                    Spacer(minLength: 14)
+                    remoteDeviceSelector()
+                        .frame(width: 320)
+                }
+            }
+            .padding(.horizontal, 22)
+            .padding(.top, 18)
+            .padding(.bottom, 14)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Divider()
+
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 16) {
+                    SiriRemoteMappingPage(
+                        selectedControlID: $selectedSiriRemoteControlID,
+                        activeControlIDs: Set(model.activeRemoteButtons.map(\.rawValue)),
+                        voiceActive: model.isStreaming,
+                        labels: SiriRemoteMappingPage.Labels(
+                            voiceTitle: localization.text("siri_remote.mapping.voice.title"),
+                            voiceFixed: localization.text("siri_remote.mapping.voice.fixed"),
+                            voiceDetail: localization.text("siri_remote.mapping.voice.detail"),
+                            touchDetail: localization.text("siri_remote.mapping.touch.detail"),
+                            missingPhoto: localization.text("siri_remote.mapping.photo.missing")
+                        ),
+                        buttonTitle: { controlID in
+                            siriRemoteButton(for: controlID)?.displayName(using: localization)
+                                ?? controlID
+                        },
+                        triggerTitle: { triggerID in
+                            ButtonTrigger(rawValue: triggerID)?.displayName(using: localization)
+                                ?? triggerID
+                        },
+                        actionSummary: { controlID, triggerID in
+                            guard let button = siriRemoteButton(for: controlID),
+                                  let trigger = ButtonTrigger(rawValue: triggerID)
+                            else { return localization.text("action.disabled") }
+                            return mappingActionSummary(for: button, trigger: trigger)
+                        },
+                        onEdit: { controlID, triggerID in
+                            guard let button = siriRemoteButton(for: controlID),
+                                  let trigger = ButtonTrigger(rawValue: triggerID)
+                            else { return }
+                            selectedSiriRemoteControlID = controlID
+                            selectedRemoteButton = button
+                            isPresetApplicationActionsExpanded = false
+                            mappingEditingTarget = ShortcutEditingTarget(
+                                button: button,
+                                trigger: trigger
+                            )
+                        }
+                    )
+
+                    if let target = mappingEditingTarget {
+                        mappingEditorPanel(target)
+                            .id("mapping-action-editor")
+                    }
+
+                    mappingFooter
+                }
+                .padding(22)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+            .compatibilityScrollEdgeEffect()
+        }
+    }
+
+    private func siriRemoteButton(for controlID: String) -> RemoteButton? {
+        switch controlID {
+        case "power": return .power
+        case "up": return .up
+        case "left": return .left
+        case "select": return .ok
+        case "right": return .right
+        case "down": return .down
+        case "back": return .back
+        case "tv": return .tv
+        case "play_pause": return .playPause
+        case "volume_up": return .volumeUp
+        case "mute": return .mute
+        case "volume_down": return .volumeDown
+        default: return nil
+        }
+    }
+    #endif
 
     private var mappingPage: some View {
         VStack(spacing: 0) {

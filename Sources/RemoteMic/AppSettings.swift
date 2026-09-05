@@ -963,6 +963,27 @@ final class AppSettings: ObservableObject {
         return profile.id
     }
 
+    @discardableResult
+    func registerAppleSiriRemote(fingerprint: String) -> UUID {
+        if let existing = remoteDeviceProfiles.first(where: { $0.hidFingerprint == fingerprint }) {
+            return existing.id
+        }
+        if let index = remoteDeviceProfiles.firstIndex(where: {
+            $0.bluetoothIdentifier == nil && $0.hidFingerprint == nil && $0.model == .unknown
+        }) {
+            remoteDeviceProfiles[index].hidFingerprint = fingerprint
+            remoteDeviceProfiles[index].model = .appleSiriRemoteA2854
+            return remoteDeviceProfiles[index].id
+        }
+        let profile = RemoteDeviceProfile(
+            model: .appleSiriRemoteA2854,
+            hidFingerprint: fingerprint,
+            mappings: mappingsForNewRemote()
+        )
+        remoteDeviceProfiles.append(profile)
+        return profile.id
+    }
+
     func profileID(forBluetoothIdentifier identifier: UUID) -> UUID? {
         remoteDeviceProfiles.first(where: { $0.bluetoothIdentifier == identifier })?.id
     }
@@ -1928,5 +1949,7 @@ final class AppSettings: ObservableObject {
         .volumeDown: .volumeDown,
         .menu: .contextMenu,
         .tv: .appSwitcher,
+        .playPause: .playPause,
+        .mute: .volumeMute,
     ]
 }
