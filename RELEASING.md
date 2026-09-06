@@ -37,6 +37,8 @@
 3. 脚本只修改这三个文件，并检查 Release Notes 不含内部入口、邀请码、凭据或实现细节。若 Tag、Release 或公开分发资产已经占用请求版本，只递增最后一位并选更高 Build；公开资产占用检查覆盖 11 个 CDN 固定路径，只有 HTTP 404 才算可用，2xx/3xx 视为占用，认证、权限、5xx、超时或其他未知响应 fail closed。单纯的 CI、Runner、GitHub、Apple 或网络故障不占用版本，不得升版本。
 4. 运行 git diff --check、Swift/脚本测试和必要的 UI/功能测试，创建普通 PR 合入 main。合入后重新 fetch，记录用于 staging 的精确 `origin/main` SHA；不再同步到其他发布分支。
 
+ReleaseHistory 的版本标题由 `scripts/sync-release-history-labels.mjs` 按 GitHub Release 状态统一标记：正式版使用“正式版 / Stable”，公开候选使用“预发布 / Pre-release”。同步工作流会在 Release 状态变化时运行，并每三天兜底检查一次，也可以手动触发；官网只同步这两份已标记的主仓库文件，不在官网单独判断版本渠道。
+
 元数据 PR 合入后不再创建版本候选分支。产品内容变化必须回到普通产品 PR；公开身份产生后不能覆盖旧 Tag 或资产。Hotfix 的元数据与紧急修复一起位于对应 Hotfix 分支，不另建候选分支。
 
 ## Preview staging：受保护的唯一签名入口
