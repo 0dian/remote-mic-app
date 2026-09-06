@@ -11,6 +11,10 @@ var packageDependencies: [Package.Dependency] = [
 ]
 var remoteMicDependencies: [Target.Dependency] = [
     "AudioExceptionGuard",
+    "AppleRemoteSupport",
+    "AppleRemoteAudioCore",
+    "AppleRemoteHCIProtocol",
+    "AppleRemotePacketLogger",
     "SayAllMCPKit",
     .product(name: "Sparkle", package: "Sparkle"),
     .product(name: "SayAllMacRemoteCore", package: "sayall-mac-remote"),
@@ -18,6 +22,7 @@ var remoteMicDependencies: [Target.Dependency] = [
 ]
 var remoteMicTestDependencies: [Target.Dependency] = [
     "RemoteMic",
+    "AppleRemoteAudioCore",
     .product(name: "SayAllMacRemoteCore", package: "sayall-mac-remote"),
 ]
 let privateArtifactPackagePath = ProcessInfo.processInfo.environment[
@@ -36,6 +41,18 @@ if let privateFeaturePath = ProcessInfo.processInfo.environment[
     packageDependencies.append(.package(path: privateFeaturePath))
     remoteMicDependencies.append(
         .product(name: "SayAllAI", package: packageIdentity)
+    )
+}
+
+if let siriRemotePath = ProcessInfo.processInfo.environment[
+    "SAYALL_SIRI_REMOTE_PACKAGE_PATH"
+], !siriRemotePath.isEmpty {
+    let packageIdentity = URL(fileURLWithPath: siriRemotePath)
+        .lastPathComponent
+        .lowercased()
+    packageDependencies.append(.package(path: siriRemotePath))
+    remoteMicDependencies.append(
+        .product(name: "SayAllSiriRemote", package: packageIdentity)
     )
 }
 
@@ -114,19 +131,71 @@ let package = Package(
         .executable(
             name: "SayAllMCP",
             targets: ["SayAllMCP"]
-        )
+        ),
+        .executable(
+            name: "AppleRemoteHCIService",
+            targets: ["AppleRemoteHCIService"]
+        ),
     ],
     dependencies: packageDependencies,
     targets: [
         .executableTarget(
             name: "RemoteMic",
             dependencies: remoteMicDependencies,
-            path: "Sources/RemoteMic"
+            path: "Sources/RemoteMic",
+            linkerSettings: [
+                .linkedFramework("Network"),
+            ]
         ),
         .target(
             name: "AudioExceptionGuard",
             path: "Sources/AudioExceptionGuard",
             publicHeadersPath: "include"
+        ),
+        .target(
+            name: "AppleRemoteSupport",
+            path: "Sources/AppleRemoteSupport",
+            publicHeadersPath: "include",
+            linkerSettings: [
+                .linkedFramework("CoreFoundation"),
+            ]
+        ),
+        .target(
+            name: "AppleRemoteAudioCore",
+            path: "Sources/AppleRemoteAudioCore"
+        ),
+        .target(
+            name: "AppleRemoteHCIProtocol",
+            path: "Sources/AppleRemoteHCIProtocol"
+        ),
+        .target(
+            name: "AppleRemotePacketLogger",
+            dependencies: ["AppleRemoteAudioCore", "AppleRemoteHCIProtocol"],
+            path: "Sources/AppleRemoteAudioCapture",
+            exclude: ["AppleRemoteVoiceController.swift", "main.swift"],
+            sources: ["SayAllBTPacketLoggerClient.swift"],
+            linkerSettings: [
+                .linkedFramework("Security"),
+            ]
+        ),
+        .executableTarget(
+            name: "AppleRemoteAudioCapture",
+            dependencies: ["AppleRemoteAudioCore", "AppleRemotePacketLogger"],
+            path: "Sources/AppleRemoteAudioCapture",
+            exclude: ["SayAllBTPacketLoggerClient.swift"],
+            linkerSettings: [
+                .linkedFramework("IOKit"),
+                .linkedFramework("Network"),
+                .linkedFramework("Security"),
+            ]
+        ),
+        .executableTarget(
+            name: "AppleRemoteHCIService",
+            dependencies: ["AppleRemoteHCIProtocol"],
+            path: "Sources/AppleRemoteHCIService",
+            linkerSettings: [
+                .linkedFramework("Security"),
+            ]
         ),
         .target(
             name: "SayAllMCPKit",
@@ -139,7 +208,7 @@ let package = Package(
         ),
         .testTarget(
             name: "RemoteMicTests",
-            dependencies: remoteMicTestDependencies + ["SayAllMCPKit"],
+            dependencies: remoteMicTestDependencies + ["SayAllMCPKit", "AppleRemoteHCIProtocol"],
             path: "Tests/RemoteMicTests"
         ),
     ],

@@ -5,6 +5,34 @@ import Testing
 
 @Suite("Settings page regression")
 struct SettingsPageRegressionTests {
+    @Test func siriRemoteMappingPageIsRoutedSeparatelyFromXiaomiPages() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let settingsSource = try String(
+            contentsOf: root.appendingPathComponent("Sources/RemoteMic/SettingsView.swift"),
+            encoding: .utf8
+        )
+        let packageSource = try String(
+            contentsOf: root.appendingPathComponent("Package.swift"),
+            encoding: .utf8
+        )
+        #expect(settingsSource.contains("#if canImport(SayAllSiriRemote)"))
+        #expect(settingsSource.contains("siriRemoteMappingPage"))
+        #expect(settingsSource.contains("model == .appleSiriRemoteA2854"))
+        #expect(settingsSource.contains("SiriRemoteMappingPage("))
+        #expect(packageSource.contains("SAYALL_SIRI_REMOTE_PACKAGE_PATH"))
+    }
+
+    @Test func siriRemoteAddsPlayPauseAndMuteWithoutExpandingXiaomiLayout() {
+        #expect(RemoteButton.xiaomiCases.count == 12)
+        #expect(!RemoteButton.xiaomiCases.contains(.playPause))
+        #expect(!RemoteButton.xiaomiCases.contains(.mute))
+        #expect(RemoteButton.allCases.contains(.playPause))
+        #expect(RemoteButton.allCases.contains(.mute))
+    }
+
     @Test func grantedPermissionsDoNotKeepShowingRequestButtons() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -458,8 +486,8 @@ struct SettingsPageRegressionTests {
 
     @Test func remoteMappingLayoutCoversEveryRealButtonWithExactConnectorAnchors() throws {
         let placements = RemoteMappingLayout.buttonPlacements
-        #expect(placements.count == RemoteButton.allCases.count)
-        #expect(Set(placements.map(\.button)) == Set(RemoteButton.allCases))
+        #expect(placements.count == RemoteButton.xiaomiCases.count)
+        #expect(Set(placements.map(\.button)) == Set(RemoteButton.xiaomiCases))
 
         let expectedAnchors: [RemoteButton: UnitPoint] = [
             .power: UnitPoint(x: 0.386, y: 0.099),

@@ -3,6 +3,7 @@ import Foundation
 enum XiaomiRemoteModel: String, Codable, CaseIterable, Identifiable {
     case rc001
     case rc003
+    case appleSiriRemoteA2854 = "apple_siri_remote_a2854"
     case unknown
 
     var id: String { rawValue }
@@ -11,6 +12,7 @@ enum XiaomiRemoteModel: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .rc001: return "remote.device.model.rc001"
         case .rc003: return "remote.device.model.rc003"
+        case .appleSiriRemoteA2854: return "remote.device.model.apple_siri_remote_a2854"
         case .unknown: return "remote.device.model.unknown"
         }
     }

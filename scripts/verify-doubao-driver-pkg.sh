@@ -153,6 +153,8 @@ case "$MODE" in
     /usr/bin/lsbom -s "$COMPONENT_PACKAGE/Bom" > "$PAYLOAD_FILES"
     /usr/bin/grep -qx './Applications/SayAll.app/Contents/Info.plist' "$PAYLOAD_FILES"
     /usr/bin/grep -qx './Applications/SayAll.app/Contents/MacOS/RemoteMic' "$PAYLOAD_FILES"
+    /usr/bin/grep -qx './Library/LaunchDaemons/com.hd838a.SayAll.AppleRemoteHCIService.plist' "$PAYLOAD_FILES"
+    /usr/bin/grep -qx './Library/PrivilegedHelperTools/com.hd838a.SayAll.AppleRemoteHCIService' "$PAYLOAD_FILES"
     /usr/bin/grep -qx './Library/Application Support/RemoteMic/Installer/MiRemoteV2ch.driver/Contents/Info.plist' "$PAYLOAD_FILES"
     /usr/bin/grep -qx './Library/Application Support/RemoteMic/Installer/MiRemoteV2ch.driver/Contents/MacOS/MiRemoteV2ch' "$PAYLOAD_FILES"
     test -x "$SCRIPTS_DIR/preinstall"
@@ -195,9 +197,9 @@ case "$MODE" in
     /usr/bin/grep -Fq 'restore_previous_driver' "$SCRIPTS_DIR/postinstall"
     /usr/bin/grep -Fq '/bin/mv -n -- "$DESTINATION" "$DRIVER_BACKUP"' \
       "$SCRIPTS_DIR/postinstall"
-    /usr/bin/grep -Fq 'DRIVER_BACKUP_TRASH_ROOT="${TARGET_VOLUME%/}/.Trashes/0"' \
+    /usr/bin/grep -Fq 'DRIVER_BACKUP_TRASH_ROOT="${TARGET_VOLUME%/}/var/root/.Trash"' \
       "$SCRIPTS_DIR/postinstall"
-    /usr/bin/grep -Fq 'STAGED_DRIVER_TRASH_ROOT="${TARGET_VOLUME%/}/.Trashes/0"' \
+    /usr/bin/grep -Fq 'STAGED_DRIVER_TRASH_ROOT="${TARGET_VOLUME%/}/var/root/.Trash"' \
       "$SCRIPTS_DIR/postinstall"
     /usr/bin/grep -Fq '/bin/mv -n -- "${STAGED_DRIVER:h}" "$STAGED_DRIVER_TRASH_DESTINATION"' \
       "$SCRIPTS_DIR/postinstall"
@@ -226,10 +228,31 @@ case "$MODE" in
       '$SPARKLE_VERSION_DIR/XPCServices/Downloader.xpc/Contents/MacOS/Downloader'; do
       /usr/bin/grep -Fq "$sparkle_executable" "$SCRIPTS_DIR/postinstall"
     done
+    for bundled_helper in \
+      '$APP_DESTINATION/Contents/Helpers/SayAllMCP' \
+      '$APP_DESTINATION/Contents/Helpers/SayAllAppleRemoteAudioCapture' \
+      '$APP_DESTINATION/Contents/Helpers/SayAllAppleRemoteHCIService'; do
+      /usr/bin/grep -Fq "$bundled_helper" "$SCRIPTS_DIR/postinstall"
+    done
     /usr/bin/grep -Fqx 'for app_executable in "${APP_EXECUTABLES[@]}"; do' "$SCRIPTS_DIR/postinstall"
     /usr/bin/grep -Fqx '  /bin/chmod 755 "$app_executable"' "$SCRIPTS_DIR/postinstall"
     /usr/bin/grep -Fqx '  test -x "$app_executable"' "$SCRIPTS_DIR/postinstall"
     /usr/bin/grep -Fqx '/usr/bin/codesign --verify --deep --strict "$APP_DESTINATION"' "$SCRIPTS_DIR/postinstall"
+    /usr/bin/grep -Fq 'HCI_SERVICE_LABEL="com.hd838a.SayAll.AppleRemoteHCIService"' \
+      "$SCRIPTS_DIR/preinstall" "$SCRIPTS_DIR/postinstall"
+    /usr/bin/grep -Fq '/bin/launchctl bootout "system/$HCI_SERVICE_LABEL"' \
+      "$SCRIPTS_DIR/preinstall" "$SCRIPTS_DIR/postinstall"
+    /usr/bin/grep -Fq '"$HCI_SERVICE_DESTINATION" --restore' \
+      "$SCRIPTS_DIR/preinstall" "$SCRIPTS_DIR/postinstall"
+    /usr/bin/grep -Fq 'hci_service_is_owned()' "$SCRIPTS_DIR/preinstall"
+    /usr/bin/grep -Fq '/usr/bin/codesign --verify --strict "$HCI_SERVICE_DESTINATION"' \
+      "$SCRIPTS_DIR/preinstall" "$SCRIPTS_DIR/postinstall"
+    /usr/bin/grep -Fq 'PlistBuddy -c "Print :MachServices:$HCI_SERVICE_LABEL"' \
+      "$SCRIPTS_DIR/postinstall"
+    /usr/bin/grep -Fq 'plutil -extract ProgramArguments.0 raw' \
+      "$SCRIPTS_DIR/postinstall"
+    /usr/bin/grep -Fqx '  /bin/launchctl bootstrap system "$HCI_SERVICE_PLIST"' \
+      "$SCRIPTS_DIR/postinstall"
     /usr/bin/grep -Fq '/usr/sbin/sysctl -in hw.optional.arm64' "$SCRIPTS_DIR/preinstall"
     /usr/bin/grep -Fq '/usr/sbin/sysctl -in hw.optional.arm64' "$SCRIPTS_DIR/postinstall"
     if /usr/bin/grep -Fq '/usr/bin/uname -m' "$SCRIPTS_DIR/preinstall" "$SCRIPTS_DIR/postinstall"; then
@@ -247,10 +270,30 @@ case "$MODE" in
     /usr/sbin/pkgutil --expand-full "$PACKAGE" "$FULL_EXPANDED"
     PAYLOAD_APP="$(/usr/bin/find "$FULL_EXPANDED" -type d -path '*/Applications/SayAll.app' -print -quit)"
     PAYLOAD_DRIVER="$(/usr/bin/find "$FULL_EXPANDED" -type d -path '*/Library/Application Support/RemoteMic/Installer/MiRemoteV2ch.driver' -print -quit)"
+    PAYLOAD_HCI_SERVICE="$(/usr/bin/find "$FULL_EXPANDED" -type f -path '*/Library/PrivilegedHelperTools/com.hd838a.SayAll.AppleRemoteHCIService' -print -quit)"
+    PAYLOAD_HCI_PLIST="$(/usr/bin/find "$FULL_EXPANDED" -type f -path '*/Library/LaunchDaemons/com.hd838a.SayAll.AppleRemoteHCIService.plist' -print -quit)"
     test -n "$PAYLOAD_APP"
     test -n "$PAYLOAD_DRIVER"
+    test -n "$PAYLOAD_HCI_SERVICE"
+    test -n "$PAYLOAD_HCI_PLIST"
     test "$(/usr/bin/lipo -archs "$PAYLOAD_APP/Contents/MacOS/RemoteMic")" = "$RELEASE_ARCH"
     test "$(/usr/bin/lipo -archs "$PAYLOAD_DRIVER/Contents/MacOS/MiRemoteV2ch")" = "$RELEASE_ARCH"
+    test "$(/usr/bin/lipo -archs "$PAYLOAD_HCI_SERVICE")" = "$RELEASE_ARCH"
+    /usr/bin/codesign --verify --strict "$PAYLOAD_HCI_SERVICE"
+    test "$(/usr/bin/codesign -dvv "$PAYLOAD_HCI_SERVICE" 2>&1 | \
+      /usr/bin/sed -n 's/^Identifier=//p')" = "com.hd838a.SayAll.AppleRemoteHCIService"
+    test "$(/usr/bin/plutil -extract Label raw -o - "$PAYLOAD_HCI_PLIST")" = \
+      "com.hd838a.SayAll.AppleRemoteHCIService"
+    test "$(/usr/libexec/PlistBuddy -c \
+      'Print :MachServices:com.hd838a.SayAll.AppleRemoteHCIService' \
+      "$PAYLOAD_HCI_PLIST")" = "true"
+    test "$(/usr/bin/plutil -extract ProgramArguments.0 raw -o - "$PAYLOAD_HCI_PLIST")" = \
+      "/Library/PrivilegedHelperTools/com.hd838a.SayAll.AppleRemoteHCIService"
+    test "$(/usr/bin/plutil -extract ProgramArguments raw -o - "$PAYLOAD_HCI_PLIST" | \
+      /usr/bin/plutil -convert xml1 -o - -- - | /usr/bin/grep -c '<string>')" = "1"
+    HCI_MINIMUM_SYSTEM="$(/usr/bin/otool -l "$PAYLOAD_HCI_SERVICE" | \
+      /usr/bin/awk '/LC_BUILD_VERSION/{seen=1; next} seen && /minos/{print $2; exit}')"
+    test "$HCI_MINIMUM_SYSTEM" = "$RELEASE_MIN_SYSTEM_VERSION"
     test "$(/usr/bin/plutil -extract LSMinimumSystemVersion raw -o - \
       "$PAYLOAD_APP/Contents/Info.plist")" = "$RELEASE_MIN_SYSTEM_VERSION"
     test "$(/usr/bin/plutil -extract SUFeedURL raw -o - \
@@ -284,6 +327,16 @@ case "$MODE" in
       "$EXPANDED/Scripts/postinstall"
     /usr/bin/grep -Fq 'queue_owned_app' "$EXPANDED/Scripts/postinstall"
     /usr/bin/grep -Fq 'queue_owned_driver' "$EXPANDED/Scripts/postinstall"
+    /usr/bin/grep -Fq 'queue_owned_hci_service' "$EXPANDED/Scripts/postinstall"
+    /usr/bin/grep -Fq 'HCI_SERVICE_LABEL="com.hd838a.SayAll.AppleRemoteHCIService"' \
+      "$EXPANDED/Scripts/postinstall"
+    /usr/bin/grep -Fq '/bin/launchctl bootout "system/$HCI_SERVICE_LABEL"' \
+      "$EXPANDED/Scripts/postinstall"
+    /usr/bin/grep -Fq '"$HCI_SERVICE_DESTINATION" --restore' \
+      "$EXPANDED/Scripts/postinstall"
+    /usr/bin/grep -Fq 'HCI_SERVICE_OWNED=0' "$EXPANDED/Scripts/postinstall"
+    /usr/bin/grep -Fq 'if [[ "$HCI_SERVICE_OWNED" -eq 1 ]]; then' \
+      "$EXPANDED/Scripts/postinstall"
     /usr/bin/grep -Fq 'prepare_trash_root' "$EXPANDED/Scripts/postinstall"
     /usr/bin/grep -Fq 'rollback_moved_items' "$EXPANDED/Scripts/postinstall"
     /usr/bin/grep -Fq '/bin/mv -n -- "${ITEM_SOURCES[$index]}" "${ITEM_DESTINATIONS[$index]}"' \
