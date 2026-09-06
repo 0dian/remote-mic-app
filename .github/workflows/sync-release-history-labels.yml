@@ -2,7 +2,7 @@ name: Sync release history labels
 
 on:
   release:
-    types: [published, prereleased, released]
+    types: [published, prereleased, released, edited]
   schedule:
     - cron: "41 3 */3 * *"
   workflow_dispatch:
