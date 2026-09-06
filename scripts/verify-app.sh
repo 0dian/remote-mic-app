@@ -11,6 +11,9 @@ APP="${1:-$RELEASE_OUTPUT_DIR/SayAll.app}"
 PLIST="$APP/Contents/Info.plist"
 BINARY="$APP/Contents/MacOS/RemoteMic"
 MCP_HELPER="$APP/Contents/Helpers/SayAllMCP"
+APPLE_REMOTE_AUDIO_HELPER="$APP/Contents/Helpers/SayAllAppleRemoteAudioCapture"
+APPLE_REMOTE_HCI_SERVICE="$APP/Contents/Helpers/SayAllAppleRemoteHCIService"
+OPUS_DYLIB="$APP/Contents/Frameworks/libopus.0.dylib"
 SPARKLE_FRAMEWORK="$APP/Contents/Frameworks/Sparkle.framework"
 APP_ICON="$APP/Contents/Resources/AppIcon.icns"
 EXPECTED_DEVELOPER_TEAM_ID="${EXPECTED_DEVELOPER_TEAM_ID:-}"
@@ -53,6 +56,9 @@ test -d "$APP"
 test -f "$PLIST"
 test -x "$BINARY"
 test -x "$MCP_HELPER"
+test -x "$APPLE_REMOTE_AUDIO_HELPER"
+test -x "$APPLE_REMOTE_HCI_SERVICE"
+test -f "$OPUS_DYLIB"
 test -d "$SPARKLE_FRAMEWORK"
 test -x "$SPARKLE_FRAMEWORK/Versions/B/Sparkle"
 test -x "$SPARKLE_FRAMEWORK/Versions/B/Autoupdate"
@@ -281,6 +287,13 @@ fi
 
 codesign --verify --deep --strict "$APP"
 codesign --verify --strict "$MCP_HELPER"
+codesign --verify --strict "$APPLE_REMOTE_AUDIO_HELPER"
+codesign --verify --strict "$APPLE_REMOTE_HCI_SERVICE"
+test "$(codesign -dvv "$APPLE_REMOTE_AUDIO_HELPER" 2>&1 | \
+  sed -n 's/^Identifier=//p')" = "com.hd838a.RemoteMic.apple-remote-audio"
+test "$(codesign -dvv "$APPLE_REMOTE_HCI_SERVICE" 2>&1 | \
+  sed -n 's/^Identifier=//p')" = "com.hd838a.SayAll.AppleRemoteHCIService"
+codesign --verify --strict "$OPUS_DYLIB"
 if [[ "$REQUIRE_DEVELOPER_ID_SIGNING" == "1" ]]; then
   RELAY_URL="$(plutil -extract RemoteWebRelayURL raw -o - "$PLIST" 2>/dev/null || true)"
   if [[ "$RELAY_URL" != wss://?*/ws ]]; then
@@ -298,6 +311,9 @@ if [[ "$REQUIRE_DEVELOPER_ID_SIGNING" == "1" ]]; then
   print -r -- "$SIGNATURE_DETAILS" | rg -q '^CodeDirectory .*flags=.*runtime'
   for signed_component in \
     "$MCP_HELPER" \
+    "$APPLE_REMOTE_AUDIO_HELPER" \
+    "$APPLE_REMOTE_HCI_SERVICE" \
+    "$OPUS_DYLIB" \
     "$SPARKLE_FRAMEWORK/Versions/B/XPCServices/Installer.xpc" \
     "$SPARKLE_FRAMEWORK/Versions/B/XPCServices/Downloader.xpc" \
     "$SPARKLE_FRAMEWORK/Versions/B/Autoupdate" \
@@ -313,11 +329,20 @@ if [[ "$REQUIRE_DEVELOPER_ID_SIGNING" == "1" ]]; then
 fi
 file "$BINARY" | rg -q 'Mach-O 64-bit executable'
 file "$MCP_HELPER" | rg -q 'Mach-O 64-bit executable'
+file "$APPLE_REMOTE_AUDIO_HELPER" | rg -q 'Mach-O 64-bit executable'
+file "$APPLE_REMOTE_HCI_SERVICE" | rg -q 'Mach-O 64-bit executable'
+file "$OPUS_DYLIB" | rg -q 'Mach-O 64-bit dynamically linked shared library'
 ARCHS="$(lipo -archs "$BINARY")"
 test "$ARCHS" = "$RELEASE_ARCH"
 test "$(lipo -archs "$MCP_HELPER")" = "$RELEASE_ARCH"
+test "$(lipo -archs "$APPLE_REMOTE_AUDIO_HELPER")" = "$RELEASE_ARCH"
+test "$(lipo -archs "$APPLE_REMOTE_HCI_SERVICE")" = "$RELEASE_ARCH"
+test "$(lipo -archs "$OPUS_DYLIB")" = "$RELEASE_ARCH"
 xcrun vtool -show-build "$BINARY" | rg -Fq "minos $RELEASE_MIN_SYSTEM_VERSION"
 xcrun vtool -show-build "$MCP_HELPER" | rg -Fq "minos $RELEASE_MIN_SYSTEM_VERSION"
+xcrun vtool -show-build "$APPLE_REMOTE_AUDIO_HELPER" | rg -Fq "minos $RELEASE_MIN_SYSTEM_VERSION"
+xcrun vtool -show-build "$APPLE_REMOTE_HCI_SERVICE" | rg -Fq "minos $RELEASE_MIN_SYSTEM_VERSION"
+xcrun vtool -show-build "$OPUS_DYLIB" | rg -Fq "minos $RELEASE_MIN_SYSTEM_VERSION"
 otool -l "$BINARY" | rg -A2 'LC_RPATH' | rg -q '@executable_path/\.\./Frameworks'
 
 if [[ "$RELEASE_VARIANT" == "intel" ]]; then
@@ -331,7 +356,7 @@ if [[ "$RELEASE_VARIANT" == "intel" ]]; then
   done
 fi
 
-EXPECTED_APP_FILES=$'Contents/Helpers/SayAllMCP\nContents/Info.plist\nContents/MacOS/RemoteMic\nContents/Resources/AppIcon.icns\nContents/Resources/COPYRIGHT.md\nContents/Resources/FirstInstallGuide.md\nContents/Resources/LICENSE.md\nContents/Resources/LOGO-LICENSE.md\nContents/Resources/RC003-remote-photo.png\nContents/Resources/README.md\nContents/Resources/StatusIconActiveTemplate.png\nContents/Resources/StatusIconActiveTemplate@2x.png\nContents/Resources/StatusIconTemplate.png\nContents/Resources/StatusIconTemplate@2x.png\nContents/Resources/TECHNICAL.md\nContents/Resources/THIRD_PARTY_NOTICES.md\nContents/Resources/TROUBLESHOOTING.md\nContents/_CodeSignature/CodeResources'
+EXPECTED_APP_FILES=$'Contents/Frameworks/libopus.0.dylib\nContents/Helpers/SayAllAppleRemoteAudioCapture\nContents/Helpers/SayAllAppleRemoteHCIService\nContents/Helpers/SayAllMCP\nContents/Info.plist\nContents/MacOS/RemoteMic\nContents/Resources/AppIcon.icns\nContents/Resources/COPYRIGHT.md\nContents/Resources/FirstInstallGuide.md\nContents/Resources/LICENSE.md\nContents/Resources/LOGO-LICENSE.md\nContents/Resources/RC003-remote-photo.png\nContents/Resources/README.md\nContents/Resources/StatusIconActiveTemplate.png\nContents/Resources/StatusIconActiveTemplate@2x.png\nContents/Resources/StatusIconTemplate.png\nContents/Resources/StatusIconTemplate@2x.png\nContents/Resources/TECHNICAL.md\nContents/Resources/THIRD_PARTY_NOTICES.md\nContents/Resources/TROUBLESHOOTING.md\nContents/_CodeSignature/CodeResources'
 while IFS= read -r expected_file; do
   test -f "$APP/$expected_file"
 done <<< "$EXPECTED_APP_FILES"

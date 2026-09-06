@@ -586,7 +586,7 @@ final class VirtualAudioOutput {
     }
 
     func endSessionAfterDraining(
-        maximumDelay: TimeInterval = 0.75,
+        maximumDelay: TimeInterval? = 0.75,
         completion: @escaping () -> Void
     ) {
         playbackLock.lock()
@@ -603,8 +603,10 @@ final class VirtualAudioOutput {
             completion()
             return
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + maximumDelay) { [weak self] in
-            self?.finishDrainIfNeeded(generation: generation, completion: completion)
+        if let maximumDelay {
+            DispatchQueue.main.asyncAfter(deadline: .now() + maximumDelay) { [weak self] in
+                self?.finishDrainIfNeeded(generation: generation, completion: completion)
+            }
         }
     }
 

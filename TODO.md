@@ -359,11 +359,12 @@
   - 已完成 SiriRemoteForge、Wand、siri-remote-steamos、SiriRemoteVibe 及其他相关开源项目的可行性研究；当前总体首选 SiriRemoteForge，建议按“按键 → 触摸/滚动 → 麦克风高级组件”分阶段验证。
   - SiriRemoteForge 集成评估、候选项目源码与 Release 对比，以及暂停的 Apple Remote Windows 路线研究均已迁移至独立的产品资料工作区。
   - 2026-09-04 已增加通用硬件输入契约并接入 A2854 候选适配器：使用精确 Apple VID/PID 与批准 usage page 监听实体键，以设备实例标准化即时按下、释放、取消、重复报告合并、配置切换后的迟到释放抑制及断连收尾；Siri 键直接进入既有 Fn 按下/释放会话，不经过双击或长按等待。
-  - 已通过动态加载系统 `MultitouchSupport` 接入单只 A2854 的候选触摸表面，并按实验初值实现中心移动、轻触点击和外圈连续滚动；多只 Apple Remote 同时连接时主动关闭触摸，避免把私有框架回调错误归属到具体设备。播放/暂停与静音在 HID 独占成功时补偿原生系统动作，电源键当前只识别并记录为未映射，不错误复用其他按键。
+  - 已通过动态加载系统 `MultitouchSupport` 接入单只 A2854 的候选触摸表面，并按实验初值实现中心移动、轻触点击和外圈连续滚动；多只 Apple Remote 同时连接时主动关闭触摸，避免把私有框架回调错误归属到具体设备。方向、中心、返回、TV、音量、播放/暂停、静音和电源均进入 A2854 独立档案映射；Siri 键保持固定语音路径。
   - 已接入完整候选音频链路：Apple Remote 内置麦克风 → 系统 PacketLogger XPC/HCI → Opus → PCM → `MiRemoteV 2ch`；用户不需要安装 PacketLogger、Bluetooth Profile、Homebrew 或额外硬件，安装包 helper 负责临时 HCI tracing、一次性管理员授权和退出恢复。缺少系统 HCI 语音跟踪时只报告明确不可用，不回退 Mac 麦克风。A2854 的配对、实体键边沿、触摸、断连、权限、签名构建、授权恢复和 RC001/RC003 回归矩阵见 `Testing/AppleRemoteHardwareInterface.md`；仍需真实 A2854、一次 GUI 管理员认证、Developer ID + Hardened Runtime、公证包和目标 macOS 完成验收，因此本任务保持未完成。
   - 2026-09-05：修复 Siri 键释放后的音频尾部生命周期；正常路径不再立即 flush，而是保留 closing generation 接收在途尾包，并等待 PCM 主线程投递归零与 `MiRemoteV 2ch` 队列自然排空后再释放 Fn，正常验收要求 `interrupted_samples=0`；快速再次按下会取消旧停止并继续同一语音会话，避免第二段开头被延后。同步补充 HCI XPC 客户端签名、helper 拒绝阶段和配置 OSStatus 日志。真实设备仍需按测试手册完成 10 次短按、5 次持续录音、5 次快速再次按下和不同 macOS 版本回归。
   - 2026-09-05：候选对齐 RC001/RC003 的按住连发规则；无双击/长按绑定时，返回键、方向键和音量键分别按既有 50 ms / 100 ms 间隔重复，松键、断连、配置或权限变化会停止。Siri 语音活动及尾音排空期间屏蔽触摸输出，当前接触需离开后才恢复，避免说话时误移动、滚动或点击。自动化已通过，真实 A2854 连续删除、连续导航、音量和语音触摸屏蔽仍待现场验收。
   - 2026-09-06：完成 A2854 专属按键设置页接入：使用私有 Package 的真机图片与独立热点，播放/暂停、静音纳入可配置键，Siri 键保持固定语音卡；宿主通过 `SAYALL_SIRI_REMOTE_UI_ONLY=1` 只引入页面，避免与公开 Apple Remote 目标重复。页面自动化和宿主回归已通过，真实窗口点击与设备验收仍待现场完成。
+  - 2026-09-06：修复播放/暂停、静音和电源绕过通用映射，以及音量自定义动作仍伴随系统副作用的问题；A2854 原始 control ID 现在直接驱动页面活动描边，右键移到右列，两列卡片中心距与 RC003 统一为 `82.65 pt`。私有 Package 42 项和宿主定向 17 项自动化已通过；真实 A2854 的最终 CGEvent 抑制、全部物理键描边和四个自定义动作仍待候选 App 验收，因此本任务保持未完成。
 - [x] 支持 Xiaomi Bluetooth Remote Control 2（RC001-MS）
   - 真机确认 RC001-MS 与 RC003-MS 使用相同的固件 `2671`、VID/PID `0x2717 / 0x32B8`、GATT Service、ATVV v1.0、16kHz IMA-ADPCM 和 120-byte frame；两款设备均已完成真实普通按键和 `STREAM_START → AUDIO → STREAM_STOP` 语音链路。
   - App 已通过正式设备信息识别 RC001/RC003，并复用既有协议、解码器、多遥控器独立配置、电量状态和按键映射；RC001 基础连接、普通按键与语音兼容范围已完成。后续条目中仍标注待 Preview 或人工验收的共享按键行为、充电状态和增强项不在此处改写为已验收。

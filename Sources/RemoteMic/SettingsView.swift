@@ -1038,8 +1038,8 @@ struct SettingsView: View {
                 VStack(spacing: 16) {
                     SiriRemoteMappingPage(
                         selectedControlID: $selectedSiriRemoteControlID,
-                        activeControlIDs: Set(model.activeRemoteButtons.map(\.rawValue)),
-                        voiceActive: model.isStreaming,
+                        activeControlIDs: model.activeAppleRemoteControlIDs,
+                        voiceActive: model.activeAppleRemoteControlIDs.contains("siri"),
                         labels: SiriRemoteMappingPage.Labels(
                             voiceTitle: localization.text("siri_remote.mapping.voice.title"),
                             voiceFixed: localization.text("siri_remote.mapping.voice.fixed"),
