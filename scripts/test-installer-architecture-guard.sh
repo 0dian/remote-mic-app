@@ -6,6 +6,7 @@ BUILD_SCRIPT="$ROOT/scripts/build-doubao-driver-pkg.sh"
 VERIFY_SCRIPT="$ROOT/scripts/verify-doubao-driver-pkg.sh"
 PREINSTALL="$ROOT/packaging/doubao-driver/install/preinstall"
 POSTINSTALL="$ROOT/packaging/doubao-driver/install/postinstall"
+UNINSTALL_POSTINSTALL="$ROOT/packaging/doubao-driver/uninstall/postinstall"
 RESOURCES="$ROOT/packaging/doubao-driver/distribution/Resources"
 LOCK_TEST_DIR="$(/usr/bin/mktemp -d /private/tmp/remotemic-installer-signing-lock-test.XXXXXX)"
 FAKE_PRODUCTSIGN="$LOCK_TEST_DIR/fake-productsign"
@@ -98,6 +99,23 @@ for package_script in "$PREINSTALL" "$POSTINSTALL"; do
     exit 1
   fi
 done
+
+for package_script in "$PREINSTALL" "$POSTINSTALL" "$UNINSTALL_POSTINSTALL"; do
+  /usr/bin/grep -Fq 'com.hd838a.SayAll.AppleRemoteHCIService' "$package_script"
+  /usr/bin/grep -Fq 'PrivilegedHelperTools' "$package_script"
+  /usr/bin/grep -Fq 'LaunchDaemons' "$package_script"
+done
+/usr/bin/grep -Fq 'launchctl bootstrap system' "$POSTINSTALL"
+/usr/bin/grep -Fq 'launchctl bootout' "$PREINSTALL"
+/usr/bin/grep -Fq 'launchctl bootout' "$UNINSTALL_POSTINSTALL"
+/usr/bin/grep -Fq -- '--restore' "$PREINSTALL"
+/usr/bin/grep -Fq -- '--restore' "$UNINSTALL_POSTINSTALL"
+/usr/bin/grep -Fq 'queue_owned_hci_service' "$UNINSTALL_POSTINSTALL"
+if /usr/bin/grep -Eq '(/bin/)?rm([[:space:]]|$)|unlink|find[[:space:]].*-delete' \
+    "$PREINSTALL" "$POSTINSTALL" "$UNINSTALL_POSTINSTALL"; then
+  print -u2 "installer scripts must never permanently delete HCI or driver files"
+  exit 1
+fi
 
 /usr/bin/grep -Fq '/usr/bin/productbuild' "$BUILD_SCRIPT"
 /usr/bin/grep -Fq 'COMPONENT_PLIST=' "$BUILD_SCRIPT"

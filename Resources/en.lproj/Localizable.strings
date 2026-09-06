@@ -885,4 +885,5 @@
 "about.preferences.restart_onboarding" = "Run Setup Guide Again";
 "about.preferences.restart_onboarding_help" = "Recheck permissions, the remote, voice output device, and voice input without clearing existing connections, button mappings, or other settings.";
 "about.preferences.restart_onboarding_action" = "Run Again";
+"about.hardware.download" = "Download Installer";
 "common.action.copy" = "Copy";

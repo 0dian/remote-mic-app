@@ -687,7 +687,9 @@ struct BuildSigningTests {
         #expect(assetSource.contains("production_prefix"))
         #expect(assetSource.contains("staged-assets.json"))
         #expect(assetSource.contains("verify-staged-release-assets.sh"))
-        #expect(assetSource.contains("ASSET_COUNT: 11"))
+        #expect(assetSource.contains("ASSET_COUNT: 13"))
+        #expect(assetSource.contains("Remote-Mic-$version-Installer.pkg"))
+        #expect(assetSource.contains("Remote-Mic-$version-Intel-Installer.pkg"))
         #expect(!assetSource.contains("candidate-provenance.json"))
     }
 

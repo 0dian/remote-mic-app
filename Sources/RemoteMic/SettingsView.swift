@@ -178,6 +178,7 @@ struct SettingsView: View {
     @ObservedObject private var membershipFeature: MembershipFeatureIntegration
     @ObservedObject private var loginItemService: LoginItemService
     @ObservedObject private var updateInformation: UpdateInformationStore
+    @ObservedObject private var hardwareAnnouncements: HardwareAnnouncementStore
     @EnvironmentObject private var localization: LocalizationStore
 
     private let checkForUpdates: () -> Void
@@ -229,6 +230,7 @@ struct SettingsView: View {
     init(
         model: BridgeAppModel,
         updateInformation: UpdateInformationStore,
+        hardwareAnnouncements: HardwareAnnouncementStore = HardwareAnnouncementStore(),
         checkForUpdates: @escaping () -> Void = {},
         refreshUpdateInformation: @escaping () -> Void = {},
         setDockIconVisible: @escaping (Bool) -> Void = { _ in },
@@ -246,6 +248,7 @@ struct SettingsView: View {
         membershipFeature = model.membershipFeature
         loginItemService = model.loginItemService
         self.updateInformation = updateInformation
+        self.hardwareAnnouncements = hardwareAnnouncements
         self.checkForUpdates = checkForUpdates
         self.refreshUpdateInformation = refreshUpdateInformation
         self.setDockIconVisible = setDockIconVisible
@@ -2661,6 +2664,8 @@ struct SettingsView: View {
 
                     sharePanel(for: .about)
 
+                    hardwareAnnouncementPanel
+
                     GlassPanel {
                         VStack(spacing: 16) {
                             HStack(alignment: .top, spacing: 24) {
@@ -2981,10 +2986,38 @@ struct SettingsView: View {
             }
         }
         .onAppear {
+            hardwareAnnouncements.refresh()
             guard UpdateCheckPolicy(
                 checksForPreReleaseUpdates: settings.checksForPreReleaseUpdates
             ).refreshesAboutInformationOnAppear else { return }
             refreshUpdateInformation()
+        }
+    }
+
+    @ViewBuilder
+    private var hardwareAnnouncementPanel: some View {
+        ForEach(hardwareAnnouncements.announcements) { announcement in
+            GlassPanel {
+                HStack(alignment: .top, spacing: 14) {
+                    Image(systemName: "sparkles")
+                        .font(.title3)
+                        .foregroundStyle(Color.accentColor)
+                        .frame(width: 34)
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text(announcement.title(for: localization.locale))
+                            .font(.subheadline.weight(.semibold))
+                        Text(announcement.message(for: localization.locale))
+                            .font(.system(size: 12))
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 12)
+                    Link(destination: announcement.downloadURL) {
+                        Label("about.hardware.download", systemImage: "arrow.down.circle")
+                    }
+                    .compatibilityButtonStyle(.prominent)
+                }
+            }
         }
     }
 
