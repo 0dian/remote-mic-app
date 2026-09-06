@@ -175,8 +175,9 @@
   - 需要验证全新安装、已有 App 升级、已有驱动升级、只装过 App、只装过驱动、安装取消、管理员授权失败、安装后首次启动、Sparkle 后续更新和完整卸载；新的单入口流程必须继续通过 App、PKG、DMG、签名、公证、Gatekeeper、文件权限和最终安装结果校验。
   - 2026-08-13 已完成候选代码：DMG 根目录只保留一个安装 PKG；App-only ZIP 和卸载 PKG 继续作为高级 Release 资产。驱动在 PKG 内暂存，安装后使用系统自带 `file`、`plutil`、`codesign` 和文件权限检查判断现有 `MiRemoteV 2ch` 是否健康且同版本、同架构，健康时原样保留，缺失、损坏、架构不符、签名异常或版本不匹配时才替换；安装脚本不调用开发者工具。本轮按要求未生成产物，完成真实安装矩阵后再勾选。
   - 2026-08-15 已为 Apple Silicon 与 Intel 独立安装包增加系统 Installer Distribution 门禁：使用真实硬件能力而非 `uname -m` 判断架构，中英文界面会在安装前明确提示错误包并指向另一版本；preinstall/postinstall 继续保留二次检查。双变体 ad-hoc PKG/DMG、产品归档结构及 Apple Silicon 拒绝 Intel 包的只读命令行路径已验证；最终 Developer ID 签名、公证包仍需在真实 Intel 与 Apple Silicon 上完成 Installer.app 双语言交叉验收后再勾选。
-  - 2026-08-16 当时将公开矩阵由 17 项精简为 12 项：两套安装 PKG 继续完整保留并验证在对应 DMG 内，但不再作为 standalone 资产重复上传；两架构共享中英文更新说明并合并 DMG SHA-256 清单。当前门禁固定 canonical manifest 的 11 项 payload，另上传 1 项 `candidate-provenance.json` 作为来源证明；下一份真实签名候选仍需验证 GitHub/CDN manifest 全量字节、两架构安装与卸载。
+  - 2026-09-06 公开资产矩阵扩展为 13 项 canonical payload：两架构安装 PKG 既保留在对应 DMG 内，也作为独立可下载资产发布；另上传 1 项 `candidate-provenance.json` 作为来源证明。下一份真实签名候选仍需验证 GitHub/CDN manifest 全量字节、两架构安装与卸载。
   - 2026-08-29 修复 Issue #101：`Uninstall Remote Mic.pkg` 不再只删除兼容麦克风，而是在 Bundle ID 校验后把 canonical/历史 App 与 `MiRemoteV 2ch` 一起移入可恢复的 macOS 废纸篓；废纸篓或移动失败时停止并回滚本轮已移动项。安装器替换旧驱动时也保留备份，失败即恢复，成功后才移入 root 废纸篓。本地设置和 BlackHole 明确保留。代码与伪目标卷验证完成；由于仍需最终 Developer ID 候选在 Apple Silicon/Intel 上完成管理员授权、真实废纸篓和取消/失败矩阵，本总任务暂不勾选。
+  - 2026-09-06 安装、升级与卸载流程已纳入 Apple Remote HCI 系统服务；安装前会核验既有 Helper 签名标识与 LaunchDaemon 的 Label、可执行路径，无法确认归属时停止覆盖。静态门禁覆盖服务恢复、加载、卸载移入废纸篓和状态目录回滚；真实管理员授权与覆盖升级仍随最终测试包验收。
 - [ ] 建立专用的 `SayAllMic 2ch` 虚拟麦克风并兼容旧驱动
   - 将现有 `MiRemoteV 2ch` 产品化为专用的 `SayAllMic 2ch`；新安装用户只看到并使用新名称，App、Onboarding 和排障流程不再默认提示用户安装或选择 `BlackHole 2ch`。
   - 升级必须继续识别并支持已经安装或正在使用的 `MiRemoteV 2ch`。安装器需要处理旧驱动升级、设备名称或 UID 变化、第三方 App 已保存的输入设备选择、重复设备、卸载和失败回滚，不能让升级后的用户突然无声或被迫手动重装。
@@ -312,7 +313,7 @@
   - 当前流程（2026-09-05）：产品改动和版本元数据通过普通 PR 合入后，只从精确 `origin/main` SHA 进行一次受保护双架构 staging；随后完成真实 Sparkle UI 验收，再由无 Apple 凭据的 publication workflow 公开同一批字节。发布 Workflow 控制面始终使用精确 `main` HEAD；只有紧急 Hotfix 源码可来自当前稳定 Tag 派生的 `hotfix/vX.Y.Z`。不得创建 `release/pre-*`、canary、rerun 或 qualification 分支。
   - 同一 SHA、版本、Build、Run/attempt 和 artifact 的 Runner、审批、GitHub、Apple 或网络故障只重试对应阶段；不重新签名、不升版本。Tag/Release 查询只有明确存在或 404/无 Tag 才能决定占用，认证、权限、网络和其他 HTTP 错误必须 fail closed。
   - staging record、canonical manifest 和 UI attestation 共同绑定发布身份；publication 会在无 Apple 凭据环境中重新恢复并验证 staging record、manifest 和真实 UI attestation，再创建或恢复公开 Pre-release。`candidate-provenance.json` 的时间戳固定取 staging record，重试不会因当前时间改变摘要。
-  - Preview 公开资产是 manifest 定义的 11 项 payload 加 provenance；当前矩阵固定名称由 verifier 检查，Install PKG 仍嵌入对应 DMG，不重复上传。Stable 只能把用户指定的已发布 Pre-release 改为正式版；已完成的晋升重试只读复验，不重新构建或上传。
+  - Preview 公开资产是 manifest 定义的 13 项 payload 加 provenance；当前矩阵固定名称由 verifier 检查，Install PKG 同时嵌入对应 DMG 并作为独立链接发布，方便硬件公告要求用户手动安装。Stable 只能把用户指定的已发布 Pre-release 改为正式版；已完成的晋升重试只读复验，不重新构建或上传。
   - Preview 和 Stable 均从 T_ready 起按 30 分钟纯发布目标计时；该指标不取消或降级任何签名、公证、真实 UI 或下载字节门禁。
   - 不存在独立的正式版构建命令。正式版只能选择已经发布并验证过的指定 Pre-release，将完全相同的 Tag、Commit、签名、公证资产和摘要晋升；晋升 Workflow 仍只从精确 `main` HEAD 运行，禁止为正式版重新构建资产。
   - 2026-08-17：正式晋升工作流补充独立 `mac-stable-release` Environment 和按需安装 `ripgrep` 的工具门禁；晋升仍只复验并提升既有候选字节，不读取 Apple 签名 Secrets，也不重新打包。

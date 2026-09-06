@@ -168,6 +168,7 @@ private final class RemoteMicAppDelegate: NSObject, NSApplicationDelegate, NSMen
 
     private let model = BridgeAppModel()
     private let updateInformation = UpdateInformationStore()
+    private let hardwareAnnouncements = HardwareAnnouncementStore()
     private lazy var localization = LocalizationStore(settings: model.settings)
     private var statusItem: NSStatusItem?
     private var statusMenu: NSMenu?
@@ -728,6 +729,7 @@ private final class RemoteMicAppDelegate: NSObject, NSApplicationDelegate, NSMen
             rootView: RemoteMicRootView(
                 model: model,
                 updateInformation: updateInformation,
+                hardwareAnnouncements: hardwareAnnouncements,
                 checkForUpdates: { [weak self] in self?.checkForUpdates() },
                 refreshUpdateInformation: { [weak self] in
                     self?.refreshUpdateInformation()

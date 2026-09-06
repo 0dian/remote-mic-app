@@ -111,7 +111,7 @@ jq -e \
     .publishedAt == .stagedAt and
     (.assetManifestSHA256 | test("^[0-9a-f]{64}$")) and
     (.uiAttestationSHA256 | test("^[0-9a-f]{64}$")) and
-    (.payloadAssets | type == "array" and length == 11) and
+    (.payloadAssets | type == "array" and length == 13) and
     ([.payloadAssets[].name] | length == (unique | length)) and
     all(.payloadAssets[];
       (.name | test("^[A-Za-z0-9][A-Za-z0-9._-]*$")) and
@@ -119,9 +119,11 @@ jq -e \
       (.sha256 | test("^[0-9a-f]{64}$"))) and
     ([
       "Remote-Mic-" + .version + "-Intel-Uninstaller.pkg",
+      "Remote-Mic-" + .version + "-Intel-Installer.pkg",
       "Remote-Mic-" + .version + "-Intel.dmg",
       "Remote-Mic-" + .version + "-Intel.zip",
       "Remote-Mic-" + .version + "-Uninstaller.pkg",
+      "Remote-Mic-" + .version + "-Installer.pkg",
       "Remote-Mic-" + .version + ".dmg",
       "Remote-Mic-" + .version + ".dmg.sha256",
       "Remote-Mic-" + .version + ".en.txt",
@@ -321,7 +323,7 @@ tag_commit="$(printf '%s\n' "$remote_tag_refs" | /usr/bin/awk '$2 ~ /\^\{\}$/ {p
   exit 1
 }
 remote_assets="$(printf '%s\n' "$release_json" | jq -r '.assets[] | [.name, (.size | tostring), (.digest // "")] | @tsv')"
-[[ "$(printf '%s\n' "$remote_assets" | /usr/bin/awk 'NF {count++} END {print count+0}')" -eq 12 ]] || {
+[[ "$(printf '%s\n' "$remote_assets" | /usr/bin/awk 'NF {count++} END {print count+0}')" -eq 14 ]] || {
   echo "Pre-release asset set changed" >&2
   exit 1
 }

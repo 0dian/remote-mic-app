@@ -3,7 +3,7 @@
 ## 适用范围
 
 - 适用版本：macOS `1.9.21` Pre-release 及后续版本
-- 测试目标：验证关于页版本中心、正式/预发布更新通道、本地化更新内容和跨版本 Sparkle 安装。
+- 测试目标：验证关于页版本中心、正式/预发布更新通道、通用硬件公告、本地化更新内容和跨版本 Sparkle 安装。
 
 ## 测试前准备
 
@@ -69,6 +69,20 @@
 
 失败判定：下载、授权、替换或重启任一步失败；安装后版本不正确；helper 失去执行权限；第二次启动退出；出现新崩溃报告。
 
+## 用例 6：新硬件支持公告与手动 PKG
+
+1. 复制 `Announcements/hardware.example.json`，把示例版本替换为已实际发布且可下载的独立安装 PKG，再通过
+   `REMOTE_MIC_UI_TEST_MODE=1` 与
+   `REMOTE_MIC_UI_TEST_HARDWARE_ANNOUNCEMENTS_URL=http://127.0.0.1:<端口>/hardware.json`
+   注入本地测试源。
+2. 以 `1020 × 772` 打开关于页，分别切换简体中文和 English。
+3. 点击公告中的“下载安装包”/“Download Installer”。
+4. 分别测试已过期公告、返回 404 的公告源和超时源。
+
+预期结果：公告卡片显示本地化标题和说明，按钮使用公告返回的直接 PKG URL 打开默认浏览器；过期公告不显示；公告源失败时关于页、Sparkle 检查和 App 启动均不受阻。正式公告源只接受 `download.sayall.app` 或 GitHub Raw 的 HTTPS 地址；本地 HTTP 仅限 UI 测试模式。
+
+失败判定：公告网络请求阻塞 App 启动或 Sparkle、显示过期内容、按钮打开的 URL 与响应不一致、语言切换后文本不更新，或最小窗口出现裁切。
+
 ## 稳定功能回归
 
 - [ ] 默认关闭预发布检查时，行为与上一正式版一致。
@@ -78,10 +92,11 @@
 - [ ] 配置导入导出、Dock 图标与启动窗口开关保持原功能。
 - [ ] Sparkle 无更新提示不显示版本历史按钮；关于页直接显示最新版本的本地化更新内容。
 - [ ] 连接、按键、统计和权限页面在最小窗口下无回归。
+- [ ] 公告成功、过期、404、超时和语言切换用例均通过；公告失败不阻塞关于页。
 
 ## 日志收集
 
-1. App 日志：`~/Library/Logs/RemoteMic/runtime.log`，重点搜索 `UPDATE CHECK` 与 `source=cloudflare_channel`。
+1. App 日志：`~/Library/Logs/RemoteMic/runtime.log`，重点搜索 `UPDATE CHECK`、`source=cloudflare_channel` 与 `HARDWARE ANNOUNCEMENT`。
 2. Console：按进程筛选 `RemoteMic`、`Autoupdate`、`Updater` 和 `Installer`。
 3. 崩溃报告：`~/Library/Logs/DiagnosticReports/` 中本次测试时间之后的 Remote Mic 报告。
 4. Sparkle CLI 使用 `--verbose` 保存完整输出；退出码 `4` 表示没有新版本，不判失败。
@@ -89,3 +104,5 @@
 ## 自动化、代理实测与用户实测边界
 
 自动化可以验证更新策略、stable/preview 与 Apple Silicon/Intel 通道派生、非法 feed 拒绝、更新说明 URL、语言状态、发布脚本和产物结构；本机代理可以验证最终打包 App 的启动、页面截图、固定 appcast 跨版本安装、签名和公证。Cloudflare 通道只能由生产部署后的 HTTP 与字节比较证明；预览版主动检查和正式版自动提示仍需在最终签名安装包中进行真实 UI 验收。
+
+公告自动化只能验证 JSON 解码、过期过滤、受信任来源和链接传递；无法替代真实后端/CDN 可用性、默认浏览器下载、PKG 签名/公证或用户在升级后重新启动 App 的验收。

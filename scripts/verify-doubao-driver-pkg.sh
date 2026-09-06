@@ -245,6 +245,8 @@ case "$MODE" in
     /usr/bin/grep -Fq '"$HCI_SERVICE_DESTINATION" --restore' \
       "$SCRIPTS_DIR/preinstall" "$SCRIPTS_DIR/postinstall"
     /usr/bin/grep -Fq 'hci_service_is_owned()' "$SCRIPTS_DIR/preinstall"
+    /usr/bin/grep -Fq 'hci_service_plist_is_owned()' "$SCRIPTS_DIR/preinstall"
+    /usr/bin/grep -Fq 'LaunchDaemons' "$SCRIPTS_DIR/preinstall"
     /usr/bin/grep -Fq '/usr/bin/codesign --verify --strict "$HCI_SERVICE_DESTINATION"' \
       "$SCRIPTS_DIR/preinstall" "$SCRIPTS_DIR/postinstall"
     /usr/bin/grep -Fq 'PlistBuddy -c "Print :MachServices:$HCI_SERVICE_LABEL"' \
@@ -328,6 +330,7 @@ case "$MODE" in
     /usr/bin/grep -Fq 'queue_owned_app' "$EXPANDED/Scripts/postinstall"
     /usr/bin/grep -Fq 'queue_owned_driver' "$EXPANDED/Scripts/postinstall"
     /usr/bin/grep -Fq 'queue_owned_hci_service' "$EXPANDED/Scripts/postinstall"
+    /usr/bin/grep -Fq 'HCI_SERVICE_STATE=' "$EXPANDED/Scripts/postinstall"
     /usr/bin/grep -Fq 'HCI_SERVICE_LABEL="com.hd838a.SayAll.AppleRemoteHCIService"' \
       "$EXPANDED/Scripts/postinstall"
     /usr/bin/grep -Fq '/bin/launchctl bootout "system/$HCI_SERVICE_LABEL"' \
@@ -339,6 +342,7 @@ case "$MODE" in
       "$EXPANDED/Scripts/postinstall"
     /usr/bin/grep -Fq 'prepare_trash_root' "$EXPANDED/Scripts/postinstall"
     /usr/bin/grep -Fq 'rollback_moved_items' "$EXPANDED/Scripts/postinstall"
+    /usr/bin/grep -Fq 'hci_state' "$EXPANDED/Scripts/postinstall"
     /usr/bin/grep -Fq '/bin/mv -n -- "${ITEM_SOURCES[$index]}" "${ITEM_DESTINATIONS[$index]}"' \
       "$EXPANDED/Scripts/postinstall"
     /usr/bin/grep -Fq 'BlackHole and local settings were not changed.' \

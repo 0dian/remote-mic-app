@@ -17,9 +17,11 @@ command -v curl >/dev/null 2>&1 || {
 version="${TAG#v}"
 payload_names=(
   "Remote-Mic-$version-Intel-Uninstaller.pkg"
+  "Remote-Mic-$version-Intel-Installer.pkg"
   "Remote-Mic-$version-Intel.dmg"
   "Remote-Mic-$version-Intel.zip"
   "Remote-Mic-$version-Uninstaller.pkg"
+  "Remote-Mic-$version-Installer.pkg"
   "Remote-Mic-$version.dmg"
   "Remote-Mic-$version.dmg.sha256"
   "Remote-Mic-$version.en.txt"
