@@ -129,6 +129,7 @@ final class MacroFeatureIntegration: ObservableObject {
         configuredActionTitle: @escaping (String, String) -> String?
     ) -> AnyView {
         #if canImport(SayAllMacroRemoteMic)
+        #if SAYALL_MACRO_REMOTE_CAPABILITIES
         feature.settingsView(
             selectedRemoteProfileID: selectedRemoteProfileID,
             remotePresentation: remotePresentation(for: remoteModel),
@@ -137,6 +138,15 @@ final class MacroFeatureIntegration: ObservableObject {
                 self?.setEditorActive(active)
             }
         )
+        #else
+        feature.settingsView(
+            selectedRemoteProfileID: selectedRemoteProfileID,
+            configuredActionTitle: configuredActionTitle,
+            onBindingEditorActivityChanged: { [weak self] active in
+                self?.setEditorActive(active)
+            }
+        )
+        #endif
         #else
         AnyView(EmptyView())
         #endif
@@ -156,6 +166,7 @@ final class MacroFeatureIntegration: ObservableObject {
         hostActionSections: [ButtonProfileHostActionSection]
     ) -> AnyView {
         #if canImport(SayAllMacroRemoteMic)
+        #if SAYALL_MACRO_REMOTE_CAPABILITIES
         return feature.buttonProfilesView(
             selectedRemoteProfileID: selectedRemoteProfileID,
             remotePresentation: remotePresentation(for: remoteModel),
@@ -179,11 +190,34 @@ final class MacroFeatureIntegration: ObservableObject {
             }
         )
         #else
+        return feature.buttonProfilesView(
+            selectedRemoteProfileID: selectedRemoteProfileID,
+            hostActionSections: hostActionSections.map { section in
+                RemoteMicHostActionSection(
+                    id: section.id,
+                    title: section.title,
+                    actions: section.actions.map { action in
+                        RemoteMicHostActionDescriptor(
+                            reference: RemoteMicHostActionReference(
+                                id: action.id,
+                                displayName: action.title,
+                                payload: action.payload
+                            ),
+                            detail: action.detail,
+                            systemImage: action.systemImage,
+                            isAvailable: action.isAvailable
+                        )
+                    }
+                )
+            }
+        )
+        #endif
+        #else
         return AnyView(EmptyView())
         #endif
     }
 
-    #if canImport(SayAllMacroRemoteMic)
+    #if SAYALL_MACRO_REMOTE_CAPABILITIES && canImport(SayAllMacroRemoteMic)
     private func remotePresentation(
         for model: XiaomiRemoteModel?
     ) -> RemoteMicRemotePresentation {
