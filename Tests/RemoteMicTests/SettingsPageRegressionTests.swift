@@ -20,8 +20,9 @@ struct SettingsPageRegressionTests {
         )
         #expect(settingsSource.contains("#if SAYALL_SIRI_REMOTE_ENABLED && canImport(SayAllSiriRemote)"))
         #expect(settingsSource.contains("siriRemoteMappingPage"))
-        #expect(settingsSource.contains("model == .appleSiriRemoteA2854"))
+        #expect(settingsSource.contains("model.isAppleSiriRemote"))
         #expect(settingsSource.contains("SiriRemoteMappingPage("))
+        #expect(packageSource.contains("SAYALL_SIRI_REMOTE_ENABLED"))
         #expect(packageSource.contains("SAYALL_SIRI_REMOTE_PACKAGE_PATH"))
     }
 

@@ -103,11 +103,9 @@ if [[ -n "$SAYALL_SIRI_REMOTE_PACKAGE_PATH" ]]; then
   fi
   SAYALL_SIRI_REMOTE_PACKAGE_PATH="${SAYALL_SIRI_REMOTE_PACKAGE_PATH:A}"
   export SAYALL_SIRI_REMOTE_PACKAGE_PATH
-  # The host already owns the runtime Apple Remote targets.  The private
-  # package contributes the gated UI/resources here; forcing UI-only avoids
-  # SwiftPM target-name collisions when the private package also contains its
-  # standalone runtime helpers.
-  export SAYALL_SIRI_REMOTE_UI_ONLY=1
+  # The private package owns the Siri Remote runtime and UI. Its internal
+  # targets use unique names so the full feature can be linked into the host.
+  unset SAYALL_SIRI_REMOTE_UI_ONLY
   export SAYALL_ENABLE_SIRI_REMOTE=1
   SAYALL_SIRI_REMOTE_INCLUDED=true
 else

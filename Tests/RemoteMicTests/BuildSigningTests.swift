@@ -96,10 +96,12 @@ struct BuildSigningTests {
         #expect(packageSource.contains("requires SAYALL_SIRI_REMOTE_PACKAGE_PATH"))
         #expect(buildSource.contains("SAYALL_SIRI_REMOTE_INCLUDED=false"))
         #expect(buildSource.contains("SayAllSiriRemoteIncluded"))
-        #expect(buildSource.contains("export SAYALL_SIRI_REMOTE_UI_ONLY=1"))
+        #expect(buildSource.contains("unset SAYALL_SIRI_REMOTE_UI_ONLY"))
+        #expect(!buildSource.contains("export SAYALL_SIRI_REMOTE_UI_ONLY=1"))
         #expect(buildSource.contains("$SAYALL_SIRI_REMOTE_INCLUDED\" == \"true\""))
         #expect(modelSource.contains("#if SAYALL_SIRI_REMOTE_ENABLED"))
-        #expect(modelSource.contains("appleRemoteAudioClient.start()"))
+        #expect(modelSource.contains("siriRemoteFeature.start()"))
+        #expect(modelSource.contains("SiriRemoteFeatureIntegration"))
     }
 
     @Test func productionReleaseRequiresAndVerifiesWebRemoteConfiguration() throws {
