@@ -32,8 +32,15 @@
 
 ## Windows 版本
 
-Windows 版本正在开发，敬请期待！
-无线麦 SayAll.app Windows 版本地址：[https://github.com/GetSayAll/remote-mic-app-windows](https://github.com/GetSayAll/remote-mic-app-windows)，目前还没有内测版本放出，敬请期待。
+无线麦 App Windows 版本的第一个预览版已经发布，当前以基本功能为主：
+
+- 支持小米蓝牙遥控器 2 和 2 Pro；
+- 语音输入目前仅支持微信输入法；
+- 语音输入快捷键为 `Ctrl + Win`。
+
+欢迎下载体验。无线麦 App Windows 版本理论上不会被游戏反作弊或杀毒软件警告；如有顾虑，建议先使用 AI 扫描源码，再安装试用。
+
+[下载 Windows 预览版](https://github.com/GetSayAll/remote-mic-app-windows/releases/)
 
 iOS App 公测：[加入 TestFlight 公测](https://testflight.apple.com/join/J8k8fb7v)
 
