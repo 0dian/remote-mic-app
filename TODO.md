@@ -371,6 +371,7 @@
   - 2026-09-06：公开宿主增加可选 Siri Remote 构建边界；未提供 `SAYALL_SIRI_REMOTE_PACKAGE_PATH` 时社区版可独立编译、默认不启动适配器、不显示专属 UI，也不打包 Siri Remote helper/resource；提供私有 Package 路径后才定义 `SAYALL_SIRI_REMOTE_ENABLED` 并启用完整工程。社区版与私有 UI-only 构建均已通过自动化编译回归，真实 A2854 验收仍按本条既有实机矩阵执行。
   - 2026-09-07：修复 A2854/RC003 页面回归：连接页按型号显示对应缩略图并保持统一外框，映射页切换设备时回到顶部，Siri 卡片首行与 RC003 对齐；Siri Remote AppSwitcher 改用持住 Command 的生命周期会话，TV 继续 Tab、左右 Cmd+导航、中心确认、返回取消，超时/断连释放修饰键。公开宿主、私有 UI-only 宿主和私有包完整 Swift 测试通过；真实 A2854 系统 AppSwitcher 与窗口视觉仍待实机验收。
   - 2026-09-08：修复本地 Siri Remote 打包校验误把嵌套 Helper 的 macOS 13 下限判定为 Apple Silicon macOS 14 不兼容；主 App 与通用 Helper 仍严格匹配发布下限，Siri Remote 音频/HCI Helper 和 Opus 仅拒绝高于发布下限的组件。真实 A2854 语音、触摸和安装器验收仍待现场完成。
+  - 2026-09-08：修复点击 Siri Remote 页面时因 SwiftPM `Bundle.module` 构建机回退路径失效而触发 `fatalError` 的崩溃；私有包统一优先解析宿主 `.app/Contents/Resources`，公开宿主构建增加资源解析器门禁。真实签名包页面点击仍需重新验收。
 - [x] 支持 Xiaomi Bluetooth Remote Control 2（RC001-MS）
   - 真机确认 RC001-MS 与 RC003-MS 使用相同的固件 `2671`、VID/PID `0x2717 / 0x32B8`、GATT Service、ATVV v1.0、16kHz IMA-ADPCM 和 120-byte frame；两款设备均已完成真实普通按键和 `STREAM_START → AUDIO → STREAM_STOP` 语音链路。
   - App 已通过正式设备信息识别 RC001/RC003，并复用既有协议、解码器、多遥控器独立配置、电量状态和按键映射；RC001 基础连接、普通按键与语音兼容范围已完成。后续条目中仍标注待 Preview 或人工验收的共享按键行为、充电状态和增强项不在此处改写为已验收。

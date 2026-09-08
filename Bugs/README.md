@@ -7,6 +7,7 @@
 - [Onboarding 已收到语音但没有文字，诊断事件反复跳变](./2026-08-29-onboarding-voice-test-focus-and-diagnostics.md)
 - [Onboarding 权限页返回按钮点击后停留原页](./2026-08-29-onboarding-permissions-back-auto-route.md)
 - [预览包 Build 回退导致更新误判与版本历史按钮误导](./2026-08-27-sparkle-preview-build-regression-and-history-button.md)
+- [点击 Siri Remote 页面因私有资源 Bundle 路径崩溃](./2026-09-08-siri-remote-page-resource-bundle-crash.md)
 
 - [回眸无可编辑输入框时录音归为未知应用且不可见](./2026-08-27-reflections-recording-metadata-fallback.md)
 - [1.9.13 搜索框与 cmux 语音输入边界](./2026-08-26-voice-input-search-and-cmux-boundary.md)
