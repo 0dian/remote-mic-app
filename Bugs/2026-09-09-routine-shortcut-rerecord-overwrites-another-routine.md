@@ -19,7 +19,7 @@
 
 ## 修复
 
-在私有事实源 `RemoteMicMacroController.saveShortcut` 中加入 copy-on-write：传入 ID 已存在时生成新的 `shortcut.*` ID；当前页面将新 ID 绑定回正在编辑的步骤，旧 Profile 保留给其他 Routine 使用。
+在组合动作模块中加入 copy-on-write：重录已存在的快捷键时生成新的快捷键记录，并只将新记录绑定回正在编辑的步骤；其他 Routine 继续使用原快捷键。
 
 ## 验证
 
