@@ -6,7 +6,7 @@
 
 - Preview：普通版本从精确 `origin/main` SHA 构建一次；紧急 Hotfix 只允许从当前稳定 Tag 派生的精确 `origin/hotfix/vX.Y.Z` SHA 构建。两者都必须完成真实 UI 升级后才能发布公开 Pre-release。
 - Stable：用户明确指定一个已经发布并验证通过的 Pre-release，将它改为正式版；不重新构建。
-- 发布 Workflow 只能从精确 `origin/main` 运行。普通源码也只能来自 `main`；`hotfix/vX.Y.Z` 是唯一允许的源码例外，`release-main` 冻结为只读历史并被门禁明确拒绝。
+- 发布 Workflow 只能从精确 `origin/main` 运行。普通新候选源码只能来自 `main`；`hotfix/vX.Y.Z` 是唯一允许的新候选源码例外。`release-main` 冻结为只读历史，但已公开的旧 Pre-release 可按兼容晋升门禁完成正式化。
 - 私有内部 Draft：使用 private-draft-release skill 的独立路径，目标仓库固定为 GetSayAll/SayAll，不在公开源码仓库创建内部 Draft。
 - “发布正式版”不是独立构建命令。没有指定现有 Pre-release 时，只能准备 Preview 或报告缺少授权。
 - stable latest 不写死版本号。Preview 开始前、公开后和失败恢复前后都必须动态读取 `releases/latest`，确认其为正式稳定版且前后一致；流程不得修改 stable feed。
@@ -105,7 +105,7 @@ publication 失败时先查询远端状态。若 Tag、Release、资产和摘要
 - 普通候选 Tag Commit 已包含在当前 `origin/main`；Hotfix 候选仍是对应远端 Hotfix 分支的精确 HEAD，并绑定当前稳定基线。
 - 13 项 payload 与 provenance 的大小、SHA-256、GitHub digest 完全一致。
 - provenance 中的 sourceRunId/sourceRunAttempt 指向成功的 `.github/workflows/mac-release-package.yml` `workflow_dispatch` Run，且 Run 的 `head_branch=main`、`head_sha=sourceWorkflowCommit`、attempt 完全一致；sourceBranch/sourceCommit 则绑定实际源码。signedArtifactId/digest 指向同一 Run 的未过期 payload artifact，另有唯一未过期的 Preview stage-record artifact，记录 `mode=preview` 并与 provenance 的源码、控制面、artifact、manifest、Tag 和时间戳一致。
-- 目标仓库固定为 `HD838A/remote-mic-app`，Stable promotion 也只从精确 `origin/main` 控制面执行。
+- 目标仓库固定为 `HD838A/remote-mic-app`，Stable promotion 也只从精确 `origin/main` 控制面执行。晋升按 provenance schema 验证候选身份：schema 5 使用当前 `main`/Hotfix 规则，schema 4 仅允许已公开且可追溯到冻结 `release-main` 的历史候选；未知 schema 或不完整 provenance 一律拒绝。
 
 随后唯一的远端突变是 gh release edit --prerelease=false --latest。Tag、Release Notes、appcast、ZIP、DMG、PKG 和 provenance 均保持原字节；晋升不重新构建、签名、公证、staple 或上传。若上一次突变已成功且该 Tag 已是 `releases/latest`，重试只做完整只读复验，不再次突变；所有候选晋升共享一个并发锁，并在突变前再次核对 stable latest。
 

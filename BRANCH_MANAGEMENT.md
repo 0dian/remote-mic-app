@@ -21,7 +21,7 @@
 
 ## release-main 历史冻结
 
-- `release-main` 只保留历史审计，不再接收 Commit、PR、合并、Preview staging、Preview publication 或 Stable promotion。
+- `release-main` 只保留历史审计，不再接收 Commit、PR、合并、Preview staging、Preview publication 或新的 Stable promotion 入口；已经公开的历史 Pre-release 可以由 `main` 控制面按兼容晋升门禁完成正式化。
 - CI 和发布 Workflow 明确拒绝 `release-main`；不得为了发布新版本重新同步、快进或复活该分支。
 - 不再创建新的 `release/pre-vX.Y.Z`、canary、rerun 或 qualification 分支；历史分支同样不得作为新发布入口。
 
@@ -57,7 +57,7 @@
 ## 正式版晋升
 
 - 不存在独立的“发布正式版”构建命令。只有用户明确指定一个已经发布且验证通过的 Pre-release，才可运行 mac-stable-promote.yml。
-- 晋升 Workflow 只能从精确 `origin/main` 运行。晋升前必须确认普通候选 Commit 仍包含于 `origin/main`，或 Hotfix 候选仍是对应 `hotfix/vX.Y.Z` 的精确远端 HEAD 且稳定基线一致；同时核对 provenance、资产数量、大小、GitHub digest、main 控制 Workflow SHA、staging Run/attempt、payload artifact 和 Preview stage-record artifact。
+- 晋升 Workflow 只能从精确 `origin/main` 运行。晋升前必须按 provenance schema 执行候选身份校验：当前 schema 5 候选须来自 `main` 或合法 `hotfix/vX.Y.Z`，历史 schema 4 候选可来自冻结的 `release-main`；两者都必须核对 Tag Commit、资产数量/大小/GitHub digest、staging Run/attempt、payload artifact 和 Preview stage-record artifact。未知 schema、缺失来源绑定或来源不再可审计时拒绝晋升。
 - 晋升只执行 gh release edit，将同一 Release 标记为非预览并设为 latest；不构建、不签名、不公证、不上传、不移动 Tag。
 - stable latest 由 GitHub `releases/latest` 在每次流程开始和结束时动态读取并校验。基线变更必须通过独立普通 PR 记录，不能由预览发布脚本隐式修改。
 
