@@ -143,7 +143,10 @@ struct CustomKeyboardShortcut: Codable, Equatable {
 
     init(keyCode: UInt16, modifierFlags: NSEvent.ModifierFlags, keyLabel: String) {
         self.keyCode = keyCode
-        modifierFlagsRawValue = modifierFlags.intersection(Self.supportedModifiers).rawValue
+        modifierFlagsRawValue = Self.normalizedModifierFlags(
+            keyCode: keyCode,
+            modifierFlags: modifierFlags
+        ).rawValue
         self.keyLabel = keyLabel
     }
 
@@ -156,8 +159,10 @@ struct CustomKeyboardShortcut: Codable, Equatable {
     }
 
     var modifierFlags: NSEvent.ModifierFlags {
-        NSEvent.ModifierFlags(rawValue: modifierFlagsRawValue)
-            .intersection(Self.supportedModifiers)
+        Self.normalizedModifierFlags(
+            keyCode: keyCode,
+            modifierFlags: NSEvent.ModifierFlags(rawValue: modifierFlagsRawValue)
+        )
     }
 
     var cgEventFlags: CGEventFlags {
@@ -172,6 +177,17 @@ struct CustomKeyboardShortcut: Codable, Equatable {
 
     var standaloneModifier: StandaloneKeyboardModifier? {
         StandaloneKeyboardModifier.matching(self)
+    }
+
+    private static func normalizedModifierFlags(
+        keyCode: UInt16,
+        modifierFlags: NSEvent.ModifierFlags
+    ) -> NSEvent.ModifierFlags {
+        var normalized = modifierFlags.intersection(Self.supportedModifiers)
+        if (123...126).contains(keyCode) {
+            normalized.remove(.function)
+        }
+        return normalized
     }
 
     func displayName(using localization: LocalizationStore) -> String {

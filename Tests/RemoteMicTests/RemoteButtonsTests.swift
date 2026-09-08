@@ -802,6 +802,28 @@ struct RemoteButtonsTests {
         ) == shortcut)
     }
 
+    @Test func arrowShortcutIgnoresSystemFunctionMarkerWhenRecordedOrLoaded() throws {
+        let event = try #require(CGEvent(
+            keyboardEventSource: CGEventSource(stateID: .hidSystemState),
+            virtualKey: 123,
+            keyDown: true
+        ))
+        event.flags = [.maskCommand, .maskSecondaryFn]
+        let recorded = try #require(NSEvent(cgEvent: event))
+        let shortcut = CustomKeyboardShortcut(event: recorded)
+
+        #expect(shortcut.modifierFlags == .command)
+        #expect(shortcut.cgEventFlags == .maskCommand)
+
+        let legacy = CustomKeyboardShortcut(
+            keyCode: 123,
+            modifierFlags: [.command, .function],
+            keyLabel: "←"
+        )
+        #expect(legacy.modifierFlags == .command)
+        #expect(legacy.cgEventFlags == .maskCommand)
+    }
+
     @Test func shortcutPresetsAndStandardKeyboardExposeReservedAndUnpressableChoices() throws {
         let spotlight = KeyboardShortcutPreset.spotlight.shortcut
         #expect(spotlight.keyCode == 49)
