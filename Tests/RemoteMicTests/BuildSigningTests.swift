@@ -798,4 +798,29 @@ struct BuildSigningTests {
         #expect(!workflowSource.contains("pull_request:"))
         #expect(!workflowSource.contains("push:"))
     }
+
+    @Test func publicMacCIHasNoPrivateRepositoryOrSwiftPMDependency() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let workflowSource = try String(
+            contentsOf: root.appendingPathComponent(".github/workflows/mac-ci.yml"),
+            encoding: .utf8
+        )
+
+        #expect(workflowSource.contains("./scripts/verify-public-ci-isolation.sh"))
+        #expect(workflowSource.contains("SKIP_SWIFT_PACKAGE_BUILD=1 ./scripts/test.sh"))
+        #expect(workflowSource.contains("./scripts/test-macos-release-flow.sh"))
+        #expect(!workflowSource.contains("GetSayAll/"))
+        #expect(!workflowSource.contains("sayall-ai"))
+        #expect(!workflowSource.contains("sayall-macro-platform"))
+        #expect(!workflowSource.contains("sayall-mac-remote"))
+        #expect(!workflowSource.contains("resolve-release-dependencies.sh"))
+        #expect(!workflowSource.contains("DEPLOY_KEY"))
+        #expect(!workflowSource.contains("secrets."))
+        #expect(!workflowSource.contains("swift test"))
+        #expect(!workflowSource.contains("swift build"))
+        #expect(!workflowSource.contains("swift package"))
+    }
 }

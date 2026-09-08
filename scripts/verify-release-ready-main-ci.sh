@@ -89,18 +89,18 @@ is_full_product_run() {
     .headBranch == $headBranch and
     .headSha == $headSha and
     ([.jobs[] | select(
-      .name == "Swift tests and build (Apple Silicon)" and
+      .name == "Public checks (Apple Silicon)" and
       .status == "completed" and .conclusion == "success" and
-      ([.steps[] | select(.name == "Run Swift tests" and .conclusion == "success")] | length) == 1 and
+      ([.steps[] | select(.name == "Run public CI isolation guard" and .conclusion == "success")] | length) == 1 and
       ([.steps[] | select(.name == "Run project self-test" and .conclusion == "success")] | length) == 1 and
-      ([.steps[] | select(.name == "Build release configuration" and .conclusion == "success")] | length) == 1
+      ([.steps[] | select(.name == "Check patch formatting" and .conclusion == "success")] | length) == 1
     )] | length) == 1 and
     ([.jobs[] | select(
-      .name == "Swift tests and build (Intel Ventura)" and
+      .name == "Public checks (Intel Ventura)" and
       .status == "completed" and .conclusion == "success" and
-      ([.steps[] | select(.name == "Run Swift tests" and .conclusion == "success")] | length) == 1 and
+      ([.steps[] | select(.name == "Run public CI isolation guard" and .conclusion == "success")] | length) == 1 and
       ([.steps[] | select(.name == "Run project self-test" and .conclusion == "success")] | length) == 1 and
-      ([.steps[] | select(.name == "Build release configuration" and .conclusion == "success")] | length) == 1
+      ([.steps[] | select(.name == "Check patch formatting" and .conclusion == "success")] | length) == 1
     )] | length) == 1
   ' >/dev/null
 }
@@ -120,12 +120,12 @@ is_control_plane_run() {
       .headBranch == $headBranch and
       .headSha == $headSha and
       ([.jobs[] | select(
-        .name == "Swift tests and build (Apple Silicon)" and
+        .name == "Public checks (Apple Silicon)" and
         .status == "completed" and .conclusion == "success" and
         ([.steps[] | select(.name == "Run release control-plane fixture" and .conclusion == "success")] | length) == 1
       )] | length) == 1 and
       ([.jobs[] | select(
-        .name == "Swift tests and build (Intel Ventura)" and
+        .name == "Public checks (Intel Ventura)" and
         .status == "completed" and .conclusion == "success" and
         ([.steps[] | select(.name == "Run release control-plane fixture" and .conclusion == "success")] | length) == 1
       )] | length) == 1

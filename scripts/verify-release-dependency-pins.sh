@@ -7,7 +7,6 @@ PACKAGE_MANIFEST="$ROOT/Package.swift"
 PACKAGE_RESOLVED="$ROOT/Package.resolved"
 DEPENDENCY_MANIFEST="$ROOT/config/release-dependencies.json"
 WORKFLOWS=(
-  "$CONTROL_ROOT/.github/workflows/mac-ci.yml"
   "$CONTROL_ROOT/.github/workflows/mac-release-package.yml"
 )
 RELEASE_CRITICAL_WORKFLOWS=(
@@ -124,9 +123,6 @@ for workflow in "${WORKFLOWS[@]}"; do
   done
 done
 
-grep -Fq '${{ steps.release-dependencies.outputs.sayall_ai_commit }}' "$CONTROL_ROOT/.github/workflows/mac-ci.yml"
-grep -Fq '${{ steps.release-dependencies.outputs.sayall_macro_platform_commit }}' "$CONTROL_ROOT/.github/workflows/mac-ci.yml"
-grep -Fq '${{ steps.release-dependencies.outputs.sayall_mac_remote_commit }}' "$CONTROL_ROOT/.github/workflows/mac-ci.yml"
 grep -Fq '${{ steps.release-dependencies.outputs.sayall_ai_commit }}' "$CONTROL_ROOT/.github/workflows/mac-release-package.yml"
 grep -Fq '${{ steps.release-dependencies.outputs.sayall_macro_platform_commit }}' "$CONTROL_ROOT/.github/workflows/mac-release-package.yml"
 grep -Fq '${{ steps.release-dependencies.outputs.sayall_mac_remote_commit }}' "$CONTROL_ROOT/.github/workflows/mac-release-package.yml"

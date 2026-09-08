@@ -19,7 +19,7 @@
 2. fetch `origin main --tags`，确认发布控制 worktree 干净、HEAD 与 `origin/main` 精确一致。普通源码必须是同一 `main` SHA；Hotfix 源码必须是 `origin/hotfix/vX.Y.Z` 的精确 HEAD，并由脚本验证当前稳定 Tag、版本和线性历史。
 3. 检查产品 Commit 已经通过普通 PR 合入 main。若用户指定 Commit 尚未合入，先在独立集成分支重放指定改动，逐个解决机械冲突，完成普通 PR、双架构 CI 后再继续；冲突涉及产品取舍时报告并暂停该取舍，不接触 Apple 凭据。
 4. 检查 config/release-dependencies.json、Package.swift、Package.resolved 和受保护 workflow 使用相同的完整依赖 SHA；运行 scripts/verify-release-dependency-pins.sh。
-5. 运行 scripts/verify-release-ready-main-ci.sh，确认 Apple Silicon 与 Intel Ventura 的源码分支 push CI 都完成 Swift tests、项目 self-test 和 Release build。脚本名为历史兼容名称；发布控制面 fixture 不得冒充产品 CI。
+5. 运行 scripts/verify-release-ready-main-ci.sh，确认 Apple Silicon 与 Intel Ventura 的源码分支公开 CI 都完成公开隔离门禁和项目 self-test；私有依赖解析、完整 Swift 测试和 Release build 由后续受保护 staging workflow 在签名环境内完成，发布控制面 fixture 不得冒充产品 CI。
 
 ### Hotfix 准备
 
