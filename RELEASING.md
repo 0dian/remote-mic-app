@@ -102,7 +102,7 @@ publication 失败时先查询远端状态。若 Tag、Release、资产和摘要
 
 - Release 存在且当前是公开 Pre-release；
 - candidate-provenance.json、Tag Commit 和 source Commit 一致；
-- 普通候选 Tag Commit 已包含在当前 `origin/main`；Hotfix 候选仍是对应远端 Hotfix 分支的精确 HEAD，并绑定当前稳定基线。
+- 当前 schema 5 的普通候选 Tag Commit 已包含在 `origin/main`，Hotfix 候选仍是对应远端 Hotfix 分支的精确 HEAD 并绑定当前稳定基线；历史 schema 4 候选则必须包含在冻结的 `origin/release-main`。
 - 13 项 payload 与 provenance 的大小、SHA-256、GitHub digest 完全一致。
 - provenance 中的 sourceRunId/sourceRunAttempt 指向成功的 `.github/workflows/mac-release-package.yml` `workflow_dispatch` Run，且 Run 的 `head_branch=main`、`head_sha=sourceWorkflowCommit`、attempt 完全一致；sourceBranch/sourceCommit 则绑定实际源码。signedArtifactId/digest 指向同一 Run 的未过期 payload artifact，另有唯一未过期的 Preview stage-record artifact，记录 `mode=preview` 并与 provenance 的源码、控制面、artifact、manifest、Tag 和时间戳一致。
 - 目标仓库固定为 `HD838A/remote-mic-app`，Stable promotion 也只从精确 `origin/main` 控制面执行。晋升按 provenance schema 验证候选身份：schema 5 使用当前 `main`/Hotfix 规则，schema 4 仅允许已公开且可追溯到冻结 `release-main` 的历史候选；未知 schema 或不完整 provenance 一律拒绝。
