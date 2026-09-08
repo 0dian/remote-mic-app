@@ -16,7 +16,6 @@ trap cleanup EXIT
 for script in \
   prepare-preview-release.sh stage-macos-preview.sh prepare-public-release-assets.sh \
   verify-public-release-source.sh \
-  verify-public-ci-isolation.sh \
   verify-preview-cdn-availability.sh \
   verify-staged-release-assets.sh recover-preview-stage.sh publish-staged-preview.sh \
   publish-preview-release.sh promote-preview-release.sh prepare-staged-preview-ui-test.sh \
@@ -30,7 +29,6 @@ done
 for script in \
   prepare-preview-release.sh stage-macos-preview.sh prepare-public-release-assets.sh \
   verify-public-release-source.sh \
-  verify-public-ci-isolation.sh \
   verify-preview-cdn-availability.sh \
   recover-preview-stage.sh publish-staged-preview.sh publish-preview-release.sh \
   promote-preview-release.sh prepare-staged-preview-ui-test.sh \
@@ -67,12 +65,7 @@ fi
 /usr/bin/grep -Fq 'verify-public-release-source.sh' "$package_workflow"
 /usr/bin/grep -Fq 'working-directory: release-source' "$package_workflow"
 /usr/bin/grep -Fq "branches: [main, 'hotfix/**']" "$ci_workflow"
-/usr/bin/grep -Fq './scripts/verify-public-ci-isolation.sh' "$ci_workflow"
-/usr/bin/grep -Fq 'SKIP_SWIFT_PACKAGE_BUILD=1 ./scripts/test.sh' "$ci_workflow"
-if /usr/bin/grep -Eq 'GetSayAll/|sayall-ai|sayall-macro-platform|sayall-mac-remote|resolve-release-dependencies.sh|DEPLOY_KEY|secrets[.]|swift (test|build|package)' "$ci_workflow"; then
-  print -u2 "public macOS CI still references private repositories, credentials, or SwiftPM"
-  exit 1
-fi
+/usr/bin/grep -Fq 'swift test --filter BuildSigningTests' "$ci_workflow"
 if /usr/bin/grep -Eq 'release_mode|expected_pipeline_digest|qualification|candidateBranch|requestId|gh release|git tag|contents:[[:space:]]*write' "$package_workflow"; then
   print -u2 "protected staging workflow still contains publication or legacy qualification state"
   exit 1

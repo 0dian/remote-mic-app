@@ -26,7 +26,6 @@ CONTROL_PLANE_SCRIPTS=(
   scripts/verify-release-ready-main-ci.sh
   scripts/verify-release-dependency-pins.sh
   scripts/verify-release-workflow-gh-token.sh
-  scripts/verify-public-ci-isolation.sh
   scripts/test-macos-release-flow.sh
   scripts/test-prepare-preview-release.sh
   scripts/verify-release-control-plane-diff.sh

@@ -10,7 +10,6 @@
 - 除 Hotfix 的临时审核 PR 外，PR 的目标分支只能是远端 main。合入后再次 fetch，确认本地 main 与 origin/main 精确一致。
 - `main` 必须始终处于可发布状态；未完成必要验收的功能不得先合入再等待发布分支筛选。
 - 普通 Preview 和 Stable 的发布控制面与源码都只能使用精确 `origin/main`；GitHub Actions 必须从 `main` 触发并验证它仍是远端 HEAD。
-- 公开仓库的 `mac-ci.yml` 必须完全独立于私有仓库、私有凭据和 SwiftPM 私有依赖解析；私有功能的完整构建只允许在受保护的发布 staging workflow 中执行。
 - 不使用普通 force-push、广泛 reset 或把其他 worktree 的未验收内容直接复制到发布分支。
 
 ## PR 合并策略

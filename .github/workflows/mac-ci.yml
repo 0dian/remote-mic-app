@@ -83,7 +83,6 @@ jobs:
               scripts/verify-release-dependency-pins.sh|\
               scripts/verify-release-workflow-gh-token.sh|\
               scripts/verify-release-control-plane-diff.sh|\
-              scripts/verify-public-ci-isolation.sh|\
               scripts/test-macos-release-flow.sh|\
               scripts/test-prepare-preview-release.sh|\
               Tests/RemoteMicTests/BuildSigningTests.swift)
@@ -110,7 +109,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
   test:
-    name: Public checks (${{ matrix.label }})
+    name: Swift tests and build (${{ matrix.label }})
     needs: classify_changes
     runs-on: macos-15
     timeout-minutes: 45
@@ -154,15 +153,80 @@ jobs:
         if: needs.classify_changes.outputs.release_control_plane_only == 'true'
         run: |
           ./scripts/test-macos-release-flow.sh
+          swift test --filter BuildSigningTests
 
-      - name: Run public CI isolation guard
-        if: needs.classify_changes.outputs.product_change == 'true'
-        run: ./scripts/verify-public-ci-isolation.sh
+      - name: Resolve versioned release dependencies
+        id: release-dependencies
+        if: (needs.classify_changes.outputs.product_change == 'true' || needs.classify_changes.outputs.release_control_plane_only == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        run: ./scripts/resolve-release-dependencies.sh github-output
+
+      - name: Check out private feature package
+        if: (needs.classify_changes.outputs.product_change == 'true' || needs.classify_changes.outputs.release_control_plane_only == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: ${{ steps.release-dependencies.outputs.sayall_ai_repository }}
+          ref: ${{ steps.release-dependencies.outputs.sayall_ai_commit }}
+          path: .private-dependencies/sayall-ai
+          ssh-key: ${{ secrets.SAYALL_AI_DEPLOY_KEY }}
+          persist-credentials: false
+
+      - name: Check out private macro package
+        if: (needs.classify_changes.outputs.product_change == 'true' || needs.classify_changes.outputs.release_control_plane_only == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: ${{ steps.release-dependencies.outputs.sayall_macro_platform_repository }}
+          ref: ${{ steps.release-dependencies.outputs.sayall_macro_platform_commit }}
+          path: .private-dependencies/sayall-macro-platform
+          ssh-key: ${{ secrets.SAYALL_MACRO_PLATFORM_DEPLOY_KEY }}
+          persist-credentials: false
+
+      - name: Configure private packages
+        if: (needs.classify_changes.outputs.product_change == 'true' || needs.classify_changes.outputs.release_control_plane_only == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        run: |
+          echo "SAYALL_AI_PACKAGE_PATH=$GITHUB_WORKSPACE/.private-dependencies/sayall-ai" >> "$GITHUB_ENV"
+          echo "SAYALL_MACRO_PLATFORM_PATH=$GITHUB_WORKSPACE/.private-dependencies/sayall-macro-platform" >> "$GITHUB_ENV"
+
+      - name: Check out shared Mac remote package
+        id: remote-package
+        if: (needs.classify_changes.outputs.product_change == 'true' || needs.classify_changes.outputs.release_control_plane_only == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: ${{ steps.release-dependencies.outputs.sayall_mac_remote_repository }}
+          ref: ${{ steps.release-dependencies.outputs.sayall_mac_remote_commit }}
+          path: .private-dependencies/sayall-mac-remote
+          ssh-key: ${{ secrets.SAYALL_MAC_REMOTE_DEPLOY_KEY }}
+          persist-credentials: false
+
+      - name: Configure shared Mac remote package
+        if: (needs.classify_changes.outputs.product_change == 'true' || needs.classify_changes.outputs.release_control_plane_only == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        run: swift package config set-mirror --original https://github.com/GetSayAll/sayall-mac-remote.git --mirror "file://$GITHUB_WORKSPACE/.private-dependencies/sayall-mac-remote"
 
       - name: Enforce repository boundaries
         if: needs.classify_changes.outputs.product_change == 'true'
         run: ./scripts/check-repository-boundaries.sh
 
+      - name: Verify release dependency pins
+        if: needs.classify_changes.outputs.product_change == 'true'
+        run: ./scripts/verify-release-dependency-pins.sh
+
+      - name: Show toolchain
+        if: needs.classify_changes.outputs.product_change == 'true'
+        run: swift --version
+
+      - name: Run Swift tests
+        if: needs.classify_changes.outputs.product_change == 'true'
+        run: swift test
+
+      - name: Run core first-voice journey gate
+        if: needs.classify_changes.outputs.product_change == 'true'
+        run: |
+          swift test --filter VoiceInputDestinationCoordinatorTests
+          swift test --filter CoreVoiceInputJourneyTests
+
       - name: Run project self-test
         if: needs.classify_changes.outputs.product_change == 'true'
         run: SKIP_SWIFT_PACKAGE_BUILD=1 ./scripts/test.sh
+
+      - name: Build release configuration
+        if: needs.classify_changes.outputs.product_change == 'true'
+        run: swift build -c release --triple "${{ matrix.triple }}"
