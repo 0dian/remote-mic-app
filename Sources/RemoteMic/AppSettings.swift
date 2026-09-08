@@ -964,7 +964,10 @@ final class AppSettings: ObservableObject {
     }
 
     @discardableResult
-    func registerAppleSiriRemote(fingerprint: String) -> UUID {
+    func registerAppleSiriRemote(
+        fingerprint: String,
+        model: XiaomiRemoteModel = .appleSiriRemoteA2854
+    ) -> UUID {
 #if !SAYALL_SIRI_REMOTE_ENABLED
         // Community builds keep this compatibility entry point so old persisted
         // state can be decoded, but never create or expose a Siri Remote profile.
@@ -977,11 +980,11 @@ final class AppSettings: ObservableObject {
             $0.bluetoothIdentifier == nil && $0.hidFingerprint == nil && $0.model == .unknown
         }) {
             remoteDeviceProfiles[index].hidFingerprint = fingerprint
-            remoteDeviceProfiles[index].model = .appleSiriRemoteA2854
+            remoteDeviceProfiles[index].model = model
             return remoteDeviceProfiles[index].id
         }
         let profile = RemoteDeviceProfile(
-            model: .appleSiriRemoteA2854,
+            model: model,
             hidFingerprint: fingerprint,
             mappings: mappingsForNewRemote()
         )
