@@ -157,11 +157,11 @@ jobs:
 
       - name: Resolve versioned release dependencies
         id: release-dependencies
-        if: needs.classify_changes.outputs.product_change == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: (needs.classify_changes.outputs.product_change == 'true' || needs.classify_changes.outputs.release_control_plane_only == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         run: ./scripts/resolve-release-dependencies.sh github-output
 
       - name: Check out private feature package
-        if: needs.classify_changes.outputs.product_change == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: (needs.classify_changes.outputs.product_change == 'true' || needs.classify_changes.outputs.release_control_plane_only == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: ${{ steps.release-dependencies.outputs.sayall_ai_repository }}
@@ -171,7 +171,7 @@ jobs:
           persist-credentials: false
 
       - name: Check out private macro package
-        if: needs.classify_changes.outputs.product_change == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: (needs.classify_changes.outputs.product_change == 'true' || needs.classify_changes.outputs.release_control_plane_only == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: ${{ steps.release-dependencies.outputs.sayall_macro_platform_repository }}
@@ -181,14 +181,14 @@ jobs:
           persist-credentials: false
 
       - name: Configure private packages
-        if: needs.classify_changes.outputs.product_change == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: (needs.classify_changes.outputs.product_change == 'true' || needs.classify_changes.outputs.release_control_plane_only == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         run: |
           echo "SAYALL_AI_PACKAGE_PATH=$GITHUB_WORKSPACE/.private-dependencies/sayall-ai" >> "$GITHUB_ENV"
           echo "SAYALL_MACRO_PLATFORM_PATH=$GITHUB_WORKSPACE/.private-dependencies/sayall-macro-platform" >> "$GITHUB_ENV"
 
       - name: Check out shared Mac remote package
         id: remote-package
-        if: needs.classify_changes.outputs.product_change == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: (needs.classify_changes.outputs.product_change == 'true' || needs.classify_changes.outputs.release_control_plane_only == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           repository: ${{ steps.release-dependencies.outputs.sayall_mac_remote_repository }}
@@ -198,7 +198,7 @@ jobs:
           persist-credentials: false
 
       - name: Configure shared Mac remote package
-        if: needs.classify_changes.outputs.product_change == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        if: (needs.classify_changes.outputs.product_change == 'true' || needs.classify_changes.outputs.release_control_plane_only == 'true') && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
         run: swift package config set-mirror --original https://github.com/GetSayAll/sayall-mac-remote.git --mirror "file://$GITHUB_WORKSPACE/.private-dependencies/sayall-mac-remote"
 
       - name: Enforce repository boundaries
