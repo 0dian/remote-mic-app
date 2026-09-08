@@ -30,6 +30,18 @@
   </tr>
 </table>
 
+## Windows version
+
+The first Windows preview of SayAll is now available, focusing on the essential features:
+
+- Supports Xiaomi Bluetooth Remote 2 and 2 Pro.
+- Voice input currently supports only WeChat Input Method.
+- The voice-input shortcut is `Ctrl + Win`.
+
+You are welcome to try it. In principle, the Windows version of SayAll should not trigger warnings from game anti-cheat or antivirus software. If you have concerns, scan the source code with an AI tool before installing it.
+
+[Download the Windows preview](https://github.com/GetSayAll/remote-mic-app-windows/releases/)
+
 iOS app beta: [Join the TestFlight public beta](https://testflight.apple.com/join/J8k8fb7v)
 
 The Mac app continues to be distributed directly. Mac App Store submission is paused, while the current App Store launch focus is the iOS app and its Apple Watch app.
