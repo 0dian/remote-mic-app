@@ -34,7 +34,7 @@ struct SettingsPageRegressionTests {
         #expect(RemoteButton.allCases.contains(.mute))
     }
 
-    @Test func grantedPermissionsDoNotKeepShowingRequestButtons() throws {
+    @Test func settingsKeepsPermissionRecoveryActionsVisibleAfterGranting() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -44,9 +44,32 @@ struct SettingsPageRegressionTests {
             encoding: .utf8
         )
 
-        #expect(source.contains("if state != .granted"))
+        #expect(source.contains("Button(actionTitle, action: action)"))
+        #expect(source.contains("permission.action.open_settings"))
         #expect(source.contains("settings.isOnboardingComplete"))
         #expect(source.contains("permissions.upgrade_identity_help"))
+    }
+
+    @Test func settingsRouteIsTheConsolidatedSettingsPage() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let source = try String(
+            contentsOf: root.appendingPathComponent("Sources/RemoteMic/SettingsView.swift"),
+            encoding: .utf8
+        )
+
+        #expect(source.contains("case .about: return \"settings.section.settings\""))
+        #expect(source.contains("case .permissions:\n            // Keep the legacy route"))
+        #expect(source.contains("Text(\"settings.permissions.title\")"))
+        #expect(source.contains("Text(\"settings.general.title\")"))
+        #expect(source.contains("Button(\"about.configuration.export\", action: exportConfiguration)"))
+        #expect(source.contains("Button(\"about.configuration.import\", action: importConfiguration)"))
+        #expect(source.contains("about.preferences.launch_at_login"))
+        #expect(source.contains("about.preferences.open_main_window_at_launch"))
+        #expect(source.contains("diagnostics.logs.copy_summary"))
+        #expect(source.contains("about.version.release_notes_title"))
     }
 
     @Test func applicationEditMenuPreservesStandardTextEditingShortcuts() throws {
@@ -283,9 +306,10 @@ struct SettingsPageRegressionTests {
         #expect(appSource.contains("REMOTE_MIC_SETTINGS_SCREENSHOT_DIR"))
         #expect(rendererSource.contains("width >= 800"))
         #expect(rendererSource.contains("height >= 650"))
-        for section in ["connection", "mapping", "statistics", "permissions", "about"] {
+        for section in ["connection", "mapping", "statistics", "about"] {
             #expect(rendererSource.contains(".\(section)"))
         }
+        #expect(!rendererSource.contains("        .permissions,"))
     }
 
     @Test func mappingHeaderUsesCompactLayoutAtMinimumWindowWidth() throws {
@@ -819,7 +843,7 @@ struct SettingsPageRegressionTests {
         #expect(source.contains("Button(\"connection.action.reconnect\")"))
     }
 
-    @Test func aboutPageKeepsVersionFeaturesTogetherAndLanguagesVisible() throws {
+    @Test func settingsPageKeepsVersionFeaturesTogetherAndLanguagesVisible() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -829,27 +853,27 @@ struct SettingsPageRegressionTests {
             encoding: .utf8
         )
 
-        let aboutPage = try #require(source.components(separatedBy: "private var aboutPage").last)
-        #expect(aboutPage.contains("updateInformationContent"))
-        #expect(aboutPage.contains("about.version.check_prerelease"))
-        #expect(aboutPage.contains("about.version.update_to"))
-        #expect(!aboutPage.contains("about.version.history"))
-        #expect(aboutPage.contains("ForEach(AppLanguage.allCases)"))
-        #expect(aboutPage.contains(".pickerStyle(.segmented)"))
+        let settingsPage = try #require(source.components(separatedBy: "private var aboutPage").last)
+        #expect(settingsPage.contains("updateInformationContent"))
+        #expect(settingsPage.contains("about.version.check_prerelease"))
+        #expect(settingsPage.contains("about.version.update_to"))
+        #expect(!settingsPage.contains("about.version.history"))
+        #expect(settingsPage.contains("ForEach(AppLanguage.allCases)"))
+        #expect(settingsPage.contains(".pickerStyle(.segmented)"))
         let languageSectionStart = try #require(
-            aboutPage.range(of: "Text(\"about.preferences.language\")")
+            settingsPage.range(of: "Text(\"about.preferences.language\")")
         )
         let languageSectionEnd = try #require(
-            aboutPage.range(
+            settingsPage.range(
                 of: "Text(\"about.preferences.restart_onboarding\")",
-                range: languageSectionStart.upperBound..<aboutPage.endIndex
+                range: languageSectionStart.upperBound..<settingsPage.endIndex
             )
         )
-        let languageSection = aboutPage[languageSectionStart.lowerBound..<languageSectionEnd.lowerBound]
+        let languageSection = settingsPage[languageSectionStart.lowerBound..<languageSectionEnd.lowerBound]
         #expect(languageSection.contains(".frame(width: 300)"))
         #expect(languageSection.contains(".frame(maxWidth: .infinity, alignment: .leading)"))
-        #expect(!aboutPage.contains("help.glossary.open"))
-        #expect(!aboutPage.contains("openGlossary"))
+        #expect(!settingsPage.contains("help.glossary.open"))
+        #expect(!settingsPage.contains("openGlossary"))
 
         let appSource = try String(
             contentsOf: root.appendingPathComponent("Sources/RemoteMic/RemoteMicApp.swift"),
@@ -861,7 +885,7 @@ struct SettingsPageRegressionTests {
         #expect(appSource.contains("semantic_newer_but_sparkle_rejected"))
     }
 
-    @Test func aboutPageOffersAnOptInLoginItemWithSystemApprovalRecovery() throws {
+    @Test func settingsPageOffersAnOptInLoginItemWithSystemApprovalRecovery() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -992,7 +1016,6 @@ struct SettingsPageRegressionTests {
             ".statistics",
             ".transcripts",
             ".connection",
-            ".permissions",
             ".about",
         ] {
             let range = try #require(orderSource.range(
@@ -1035,7 +1058,6 @@ struct SettingsPageRegressionTests {
             ".statistics",
             ".transcripts",
             ".connection",
-            ".permissions",
             ".about",
         ] {
             #expect(sections.contains(section))
@@ -1208,6 +1230,19 @@ struct SettingsPageRegressionTests {
         #expect(source.contains("expandedShareSection = .about"))
         #expect(source.contains("ShareCard(url: shareURL)"))
         #expect(!source.contains(".popover"))
+
+        let aboutStart = try #require(source.range(of: "private var aboutPage"))
+        let supportHelperStart = try #require(source.range(
+            of: "private var settingsSupportSection",
+            range: aboutStart.upperBound..<source.endIndex
+        ))
+        let aboutPageSource = source[aboutStart.lowerBound..<supportHelperStart.lowerBound]
+        let diagnosticsPosition = try #require(aboutPageSource.range(of: "inlineDiagnosticsSection"))
+        let supportPosition = try #require(aboutPageSource.range(of: "settingsSupportSection"))
+        let sharePosition = try #require(aboutPageSource.range(of: "sharePanel(for: .about)"))
+        #expect(diagnosticsPosition.lowerBound < supportPosition.lowerBound)
+        #expect(supportPosition.lowerBound < sharePosition.lowerBound)
+        #expect(aboutPageSource[sharePosition.upperBound...].contains("sharePanel(for: .about)") == false)
     }
 
     @Test func profileMetricsKeepApprovedWideSingleRowLayout() throws {
