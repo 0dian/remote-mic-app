@@ -68,6 +68,7 @@ fi
 /usr/bin/grep -Fq 'swift test --disable-keychain --filter BuildSigningTests' "$ci_workflow"
 /usr/bin/grep -Fq 'Detect private dependency access' "$ci_workflow"
 /usr/bin/grep -Fq 'Private dependency access is unavailable' "$ci_workflow"
+/usr/bin/grep -Fq "GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=accept-new'" "$ci_workflow"
 /usr/bin/grep -Fq 'Run private integration tests' "$ci_workflow"
 /usr/bin/grep -Fq 'Build private release configuration' "$ci_workflow"
 /usr/bin/grep -Fq "if: steps.private-access.outputs.available == 'true'" "$ci_workflow"

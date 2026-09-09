@@ -29,6 +29,7 @@
 - 公开兼容 target 只实现宿主所需的公开接口，并把 Phone、Watch、Web 私有连接能力明确置为不可用，不复制私有仓库实现。
 - macOS CI 始终在清空全部私有 Package 路径后运行完整 Swift tests、项目 self-test 和双架构 Release build。
 - CI 仅在三项固定私有依赖的 deploy key 和实际 Git 访问都可用时，checkout 固定 Commit 并追加私有完整测试与双架构构建；否则只跳过这些额外步骤。
+- 每个私有仓库探测使用独立 `ssh-agent`，其中只加载当前 deploy key。探测不设置缺少对应 `IdentityFile` 的 `IdentitiesOnly=yes`，避免错误忽略已加载的 agent key并把官方 CI 误判为无权限。
 - 受保护发布 Workflow 显式设置三个私有 Package 路径和 `REQUIRE_*` 门禁，缺少 Mac Remote 私有 Package 时在构建前失败。
 
 ## 验证

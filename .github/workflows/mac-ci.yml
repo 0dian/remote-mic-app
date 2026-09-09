@@ -179,7 +179,7 @@ jobs:
             fi
             eval "$(ssh-agent -s)" >/dev/null
             if ! printf '%s\n' "$key" | ssh-add - >/dev/null 2>&1 || \
-               ! GIT_SSH_COMMAND='ssh -o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new' \
+               ! GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=accept-new' \
                  git ls-remote "git@github.com:$repository.git" HEAD >/dev/null 2>&1; then
               available=false
             fi
