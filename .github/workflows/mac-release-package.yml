@@ -282,12 +282,11 @@ jobs:
           {
             echo "SAYALL_AI_PACKAGE_PATH=$GITHUB_WORKSPACE/.private-dependencies/sayall-ai"
             echo "SAYALL_MACRO_PLATFORM_PATH=$GITHUB_WORKSPACE/.private-dependencies/sayall-macro-platform"
+            echo "SAYALL_MAC_REMOTE_PACKAGE_PATH=$GITHUB_WORKSPACE/.private-dependencies/sayall-mac-remote"
             echo "REQUIRE_SAYALL_AI_PACKAGE=1"
             echo "REQUIRE_SAYALL_MACRO_PLATFORM=1"
+            echo "REQUIRE_SAYALL_MAC_REMOTE_PACKAGE=1"
           } >> "$GITHUB_ENV"
-          swift package config set-mirror \
-            --original https://github.com/GetSayAll/sayall-mac-remote.git \
-            --mirror "file://$GITHUB_WORKSPACE/.private-dependencies/sayall-mac-remote"
 
       - name: Prepare protected release identity
         env:

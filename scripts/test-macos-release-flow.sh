@@ -65,7 +65,30 @@ fi
 /usr/bin/grep -Fq 'verify-public-release-source.sh' "$package_workflow"
 /usr/bin/grep -Fq 'working-directory: release-source' "$package_workflow"
 /usr/bin/grep -Fq "branches: [main, 'hotfix/**']" "$ci_workflow"
-/usr/bin/grep -Fq 'swift test --filter BuildSigningTests' "$ci_workflow"
+/usr/bin/grep -Fq 'swift test --disable-keychain --filter BuildSigningTests' "$ci_workflow"
+/usr/bin/grep -Fq 'Detect private dependency access' "$ci_workflow"
+/usr/bin/grep -Fq 'Private dependency access is unavailable' "$ci_workflow"
+/usr/bin/grep -Fq "GIT_SSH_COMMAND='ssh -o StrictHostKeyChecking=accept-new'" "$ci_workflow"
+/usr/bin/grep -Fq 'Run private integration tests' "$ci_workflow"
+/usr/bin/grep -Fq 'Build private release configuration' "$ci_workflow"
+/usr/bin/grep -Fq "if: steps.private-access.outputs.available == 'true'" "$ci_workflow"
+if [[ "$(/usr/bin/grep -c -- 'SAYALL_MAC_REMOTE_PACKAGE_PATH: ""' "$ci_workflow")" -lt 3 ]] || \
+   [[ "$(/usr/bin/grep -c -- "if: steps.private-access.outputs.available == 'true'" "$ci_workflow")" -lt 7 ]]; then
+  print -u2 "public CI must clear private package paths and private checks must remain conditional"
+  exit 1
+fi
+if [[ "$(/usr/bin/grep -c -- 'swift test --disable-keychain' "$ci_workflow")" -lt 4 ]] || \
+   [[ "$(/usr/bin/grep -c -- 'swift build --disable-keychain' "$ci_workflow")" -lt 1 ]]; then
+  print -u2 "public and private CI SwiftPM entry points must disable macOS Keychain lookup"
+  exit 1
+fi
+release_gate_log="$WORK_DIR/release-private-package-gate.log"
+if REQUIRE_SAYALL_MAC_REMOTE_PACKAGE=1 SAYALL_MAC_REMOTE_PACKAGE_PATH= \
+   "$ROOT/scripts/build-app.sh" >"$release_gate_log" 2>&1; then
+  print -u2 "release build must fail when the required Mac remote package is missing"
+  exit 1
+fi
+/usr/bin/grep -Fq 'A SayAll Mac remote package is required for this build' "$release_gate_log"
 if /usr/bin/grep -Eq 'release_mode|expected_pipeline_digest|qualification|candidateBranch|requestId|gh release|git tag|contents:[[:space:]]*write' "$package_workflow"; then
   print -u2 "protected staging workflow still contains publication or legacy qualification state"
   exit 1

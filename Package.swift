@@ -4,10 +4,6 @@ import PackageDescription
 
 var packageDependencies: [Package.Dependency] = [
     .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.9.4"),
-    .package(
-        url: "https://github.com/GetSayAll/sayall-mac-remote.git",
-        revision: "7d1b3c2e1d88913bafaa3a401c939eb218a1f363"
-    ),
 ]
 var remoteMicDependencies: [Target.Dependency] = [
     "AudioExceptionGuard",
@@ -17,14 +13,45 @@ var remoteMicDependencies: [Target.Dependency] = [
     "AppleRemotePacketLogger",
     "SayAllMCPKit",
     .product(name: "Sparkle", package: "Sparkle"),
-    .product(name: "SayAllMacRemoteCore", package: "sayall-mac-remote"),
-    .product(name: "SayAllMacRemoteUI", package: "sayall-mac-remote"),
 ]
 var remoteMicTestDependencies: [Target.Dependency] = [
     "RemoteMic",
     "AppleRemoteAudioCore",
-    .product(name: "SayAllMacRemoteCore", package: "sayall-mac-remote"),
 ]
+var packageTargets: [Target] = []
+let macRemotePackagePath = ProcessInfo.processInfo.environment[
+    "SAYALL_MAC_REMOTE_PACKAGE_PATH"
+]
+let macRemoteEnabled = !(macRemotePackagePath ?? "").isEmpty
+if let macRemotePackagePath, !macRemotePackagePath.isEmpty {
+    let packageIdentity = URL(fileURLWithPath: macRemotePackagePath)
+        .lastPathComponent
+        .lowercased()
+    packageDependencies.append(.package(path: macRemotePackagePath))
+    remoteMicDependencies.append(
+        .product(name: "SayAllMacRemoteCore", package: packageIdentity)
+    )
+    remoteMicDependencies.append(
+        .product(name: "SayAllMacRemoteUI", package: packageIdentity)
+    )
+    remoteMicTestDependencies.append(
+        .product(name: "SayAllMacRemoteCore", package: packageIdentity)
+    )
+} else {
+    remoteMicDependencies += ["SayAllMacRemoteCore", "SayAllMacRemoteUI"]
+    remoteMicTestDependencies.append("SayAllMacRemoteCore")
+    packageTargets += [
+        .target(
+            name: "SayAllMacRemoteCore",
+            path: "Sources/PublicRemoteCompatibility/Core"
+        ),
+        .target(
+            name: "SayAllMacRemoteUI",
+            dependencies: ["SayAllMacRemoteCore"],
+            path: "Sources/PublicRemoteCompatibility/UI"
+        ),
+    ]
+}
 let siriRemotePackagePath = ProcessInfo.processInfo.environment[
     "SAYALL_SIRI_REMOTE_PACKAGE_PATH"
 ]
@@ -52,6 +79,16 @@ let macroCapabilitiesAvailable = macroPlatformPackagePath.map {
 let macOSPlatform: SupportedPlatform = ProcessInfo.processInfo.environment["RELEASE_VARIANT"] == "intel"
     ? .macOS(.v13)
     : .macOS(.v14)
+var remoteMicSwiftSettings: [SwiftSetting] = []
+if siriRemoteEnabled {
+    remoteMicSwiftSettings.append(.define("SAYALL_SIRI_REMOTE_ENABLED"))
+}
+if macRemoteEnabled {
+    remoteMicSwiftSettings.append(.define("SAYALL_MAC_REMOTE_ENABLED"))
+}
+if macroCapabilitiesAvailable {
+    remoteMicSwiftSettings.append(.define("SAYALL_MACRO_REMOTE_CAPABILITIES"))
+}
 
 if let privateFeaturePath = ProcessInfo.processInfo.environment[
     "SAYALL_AI_PACKAGE_PATH"
@@ -155,21 +192,12 @@ let package = Package(
         ),
     ],
     dependencies: packageDependencies,
-    targets: [
+    targets: packageTargets + [
         .executableTarget(
             name: "RemoteMic",
             dependencies: remoteMicDependencies,
             path: "Sources/RemoteMic",
-            swiftSettings: {
-                var settings: [SwiftSetting] = []
-                if siriRemoteEnabled {
-                    settings.append(.define("SAYALL_SIRI_REMOTE_ENABLED"))
-                }
-                if macroCapabilitiesAvailable {
-                    settings.append(.define("SAYALL_MACRO_REMOTE_CAPABILITIES"))
-                }
-                return settings
-            }(),
+            swiftSettings: remoteMicSwiftSettings,
             linkerSettings: [
                 .linkedFramework("Network"),
             ]
@@ -237,6 +265,7 @@ let package = Package(
             name: "RemoteMicTests",
             dependencies: remoteMicTestDependencies + ["SayAllMCPKit", "AppleRemoteHCIProtocol"],
             path: "Tests/RemoteMicTests",
+            exclude: macRemoteEnabled ? [] : ["WatchBluetoothVoiceJourneyTests.swift"],
             swiftSettings: siriRemoteEnabled
                 ? [.define("SAYALL_SIRI_REMOTE_ENABLED")]
                 : []

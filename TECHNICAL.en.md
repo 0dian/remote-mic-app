@@ -132,11 +132,13 @@ On macOS 26, the settings window uses native `glassEffect`, glass button styles,
 Development verification:
 
     ./scripts/test.sh
-    swift test
+    swift test --disable-keychain
     ./scripts/build-app.sh
     ./scripts/verify-app.sh
 
 `scripts/test.sh` runs protocol and policy self-tests and compiles the full app. Swift Testing covers ATVV, Bluetooth lifecycle, audio-device policy, button mapping, permissions, configuration compatibility, Fn mapping, the Typeless session lifecycle, pre-roll, audio draining, and test-tone behavior.
+
+The default checkout is the complete public build path. `Package.swift` does not resolve private Git URLs, so contributors with public-repository access only can run the tests above, produce `dist/SayAll.app`, and launch the public functionality. Official CI always runs that public path first. When the pinned private packages are accessible, CI additionally supplies `SAYALL_AI_PACKAGE_PATH`, `SAYALL_MACRO_PLATFORM_PATH`, and `SAYALL_MAC_REMOTE_PACKAGE_PATH` for private integration tests. Protected release builds require those packages and never publish a build backed only by the public compatibility layer.
 
 Build and launch:
 

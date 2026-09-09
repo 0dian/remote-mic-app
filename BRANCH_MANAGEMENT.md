@@ -19,6 +19,14 @@
 - 自动化工具不得因为“提交较少”“历史更整洁”或界面默认按钮而擅自选择 squash/rebase；未指定时按本节的普通 Merge 执行。
 - 合并后必须重新 `git fetch origin main`，记录远端 `main` 的合并提交 SHA，并确认目标分支已包含该 PR；已经合入的提交不得为了更换合并方式而改写 `main` 历史。
 
+## 公开构建与私有集成边界
+
+- 公开仓库的默认 checkout 不得要求任何私有仓库权限。`Package.swift`、`Package.resolved` 和公开构建入口不得解析私有 Git URL；只有公开仓库访问权限的贡献者必须能完成 SwiftPM resolve、完整测试、双架构 Release build 和本地 App 构建。
+- 私有组件通过显式本地 Package 路径接入。未提供路径时，公开兼容层只保留编译契约并明确报告相关能力不可用，不得复制私有实现，也不得影响实体 HID、音频、设置等公开功能运行。
+- macOS CI 的公开测试与构建是强制门禁，必须显式清空私有 Package 路径后执行，不能因为 Secret、deploy key 或私有仓库不可访问而跳过。公开门禁失败时 Job 必须失败。
+- CI 探测到全部受版本清单约束的私有依赖都可访问时，必须按固定 Commit 追加私有集成测试和双架构 Release build；这些检查失败时 Job 必须失败。权限缺失或私有仓库不可访问时，只允许跳过私有集成步骤，并输出明确的非敏感状态，不得打印 key 或凭据。
+- 受保护发布 Workflow 与普通 CI 不同，必须 fail closed：缺少任一发布所需私有组件、固定 Commit 校验失败或私有 checkout 失败时不得生成发布包。
+
 ## release-main 历史冻结
 
 - `release-main` 只保留历史审计，不再接收 Commit、PR、合并、Preview staging、Preview publication 或新的 Stable promotion 入口；已经公开的历史 Pre-release 可以由 `main` 控制面按兼容晋升门禁完成正式化。
