@@ -109,13 +109,27 @@ if [[ -n "$SAYALL_SIRI_REMOTE_PACKAGE_PATH" ]]; then
   fi
   SAYALL_SIRI_REMOTE_PACKAGE_PATH="${SAYALL_SIRI_REMOTE_PACKAGE_PATH:A}"
   export SAYALL_SIRI_REMOTE_PACKAGE_PATH
-  # The host already owns the runtime Apple Remote targets.  The private
-  # package contributes the gated UI/resources here; forcing UI-only avoids
-  # SwiftPM target-name collisions when the private package also contains its
-  # standalone runtime helpers.
-  export SAYALL_SIRI_REMOTE_UI_ONLY=1
+  # The private package owns the Siri Remote runtime and UI. Its internal
+  # targets use unique names so the full feature can be linked into the host.
+  unset SAYALL_SIRI_REMOTE_UI_ONLY
   export SAYALL_ENABLE_SIRI_REMOTE=1
   SAYALL_SIRI_REMOTE_INCLUDED=true
+  SIRI_REMOTE_SOURCE_ROOT="$SAYALL_SIRI_REMOTE_PACKAGE_PATH/Sources/SayAllSiriRemote"
+  SIRI_REMOTE_RESOURCE_RESOLVER="$SIRI_REMOTE_SOURCE_ROOT/SiriRemoteResources.swift"
+  if [[ ! -f "$SIRI_REMOTE_RESOURCE_RESOLVER" ]] || \
+      ! /usr/bin/grep -Eq 'Bundle\.main\.resourceURL' "$SIRI_REMOTE_RESOURCE_RESOLVER"; then
+    print -u2 "Siri Remote resource resolver is missing or does not prefer the packaged App resource bundle"
+    exit 1
+  fi
+  for siri_remote_source in \
+    SiriRemoteDeviceCapabilities.swift \
+    SiriRemoteConnectionPhoto.swift \
+    SiriRemoteMappingPage.swift; do
+    if /usr/bin/grep -Eq 'Bundle\.module' "$SIRI_REMOTE_SOURCE_ROOT/$siri_remote_source"; then
+      print -u2 "Siri Remote source bypasses the packaged resource resolver: $siri_remote_source"
+      exit 1
+    fi
+  done
 else
   unset SAYALL_ENABLE_SIRI_REMOTE
   SAYALL_SIRI_REMOTE_INCLUDED=false

@@ -188,7 +188,7 @@ private struct MobileButtonGestureKey: Hashable {
 }
 
 private struct AppleRemoteButtonGestureKey: Hashable {
-    let device: RemoteHardwareDeviceIdentity
+    let device: SiriRemoteDeviceIdentity
     let button: RemoteButton
 }
 
@@ -215,16 +215,6 @@ enum AppleRemoteInteractionPolicy {
     static func blocksTouch(activeVoiceDeviceCount: Int, voiceStopping: Bool) -> Bool {
         activeVoiceDeviceCount > 0 || voiceStopping
     }
-}
-
-private struct AppleRemoteTouchDiagnostic {
-    let operationID: UInt64
-    var moveCount = 0
-    var scrollCount = 0
-    var clickCount = 0
-    var submissionFailureCount = 0
-    var voiceSuppressed = false
-    var suppressedEventCount = 0
 }
 
 struct MobileRemoteButtonObservation: Equatable {
@@ -518,19 +508,15 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     private let hidEventSuppressor = KeyboardEventSuppressor()
     private var hidMonitors: [String: HIDRemoteMonitor] = [:]
     private var discoveryHIDMonitor: HIDRemoteMonitor?
-    private let appleRemoteAdapter = AppleSiriRemoteAdapter()
-    private lazy var appleRemoteAudioClient = AppleRemoteAudioClient()
-    private var appleRemoteProfileIDs: [RemoteHardwareDeviceIdentity: UUID] = [:]
+    private lazy var siriRemoteFeature = SiriRemoteFeatureIntegration(
+        logger: { AppLogger.shared.write($0) }
+    )
+    private var appleRemoteProfileIDs: [SiriRemoteDeviceIdentity: UUID] = [:]
     private var connectedAppleRemoteProfileIDs = Set<UUID>()
-    private var appleRemoteActiveButtons: [RemoteHardwareDeviceIdentity: Set<RemoteButton>] = [:]
-    private var appleRemoteActiveControlIDs: [RemoteHardwareDeviceIdentity: Set<String>] = [:]
-    private var appleRemoteTouchInterpreters:
-        [RemoteHardwareDeviceIdentity: AppleSiriRemoteTouchInterpreter] = [:]
-    private var appleRemoteTouchDiagnostics:
-        [RemoteHardwareDeviceIdentity: AppleRemoteTouchDiagnostic] = [:]
-    private var appleRemoteTouchOperationCounter: UInt64 = 0
+    private var appleRemoteActiveButtons: [SiriRemoteDeviceIdentity: Set<RemoteButton>] = [:]
+    private var appleRemoteActiveControlIDs: [SiriRemoteDeviceIdentity: Set<String>] = [:]
     private var appleRemoteGestureRecognizers:
-        [RemoteHardwareDeviceIdentity: RemoteButtonGestureRecognizer] = [:]
+        [SiriRemoteDeviceIdentity: RemoteButtonGestureRecognizer] = [:]
     private var appleRemoteDoubleClickTimers:
         [AppleRemoteButtonGestureKey: DispatchSourceTimer] = [:]
     private var appleRemoteLongPressTimers:
@@ -542,7 +528,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     private var appleRemoteRepeatOperationCounter: UInt64 = 0
     private let appleRemoteAppSwitcherSession = KeyboardInjector.AppSwitcherSession()
     private var appleRemoteAppSwitcherTimeout: DispatchSourceTimer?
-    private var appleRemoteVoiceDevices = Set<RemoteHardwareDeviceIdentity>()
+    private var appleRemoteVoiceDevices = Set<SiriRemoteDeviceIdentity>()
     private var appleRemoteVoiceStopping = false
     private var appleRemoteVoiceStopOperation: UInt64 = 0
     private var appleRemoteAudioBatchCount = 0
@@ -615,19 +601,19 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             self?.scheduleAudioRecovery(reason: "engine_configuration_change")
         }
 #if SAYALL_SIRI_REMOTE_ENABLED
-        appleRemoteAdapter.onConnection = { [weak self] connection in
+        siriRemoteFeature.onConnection = { [weak self] connection in
             self?.handleAppleRemoteConnection(connection)
         }
-        appleRemoteAdapter.onControlEvent = { [weak self] event in
+        siriRemoteFeature.onControlEvent = { [weak self] event in
             self?.handleAppleRemoteControlEvent(event)
         }
-        appleRemoteAdapter.onTouchEvent = { [weak self] event in
-            self?.handleAppleRemoteTouchEvent(event)
-        }
-        appleRemoteAudioClient.onSamples = { [weak self] samples in
+        siriRemoteFeature.onSamples = { [weak self] samples in
             self?.receiveAppleRemoteAudio(samples)
         }
-        appleRemoteAudioClient.onStatus = { _ in }
+        siriRemoteFeature.onStatus = { _ in }
+        siriRemoteFeature.onPowerSnapshot = { [weak self] snapshot in
+            self?.handleAppleRemotePowerSnapshot(snapshot)
+        }
 #endif
         phoneRemoteServer.isIdentityTrusted = { [weak self] fingerprint in
             self?.settings.isPhoneIdentityTrusted(fingerprint) ?? false
@@ -878,7 +864,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         started = true
         startAudioSubsystem()
 #if SAYALL_SIRI_REMOTE_ENABLED
-        appleRemoteAudioClient.start()
+        siriRemoteFeature.start()
 #endif
         applyHIDSettings()
         terminationObserver = NotificationCenter.default.addObserver(
@@ -928,8 +914,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         bluetoothBridges.values.forEach { $0.stop() }
         discoveryBluetoothBridge?.stop()
 #if SAYALL_SIRI_REMOTE_ENABLED
-        appleRemoteAdapter.stop(reason: .adapterStopped, suppressNextRelease: false)
-        appleRemoteAudioClient.stop()
+        siriRemoteFeature.stop()
         resetAllAppleRemoteState(reason: "app_stop")
 #endif
         bluetoothBridges.removeAll()
@@ -1955,7 +1940,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         startHIDMonitors(powerKeySuppressed: powerKeySuppressed)
 #if SAYALL_SIRI_REMOTE_ENABLED
         if started {
-            appleRemoteAdapter.restart(customMappingEnabled: settings.customMappingEnabled)
+            siriRemoteFeature.restart(customMappingEnabled: settings.customMappingEnabled)
         }
         refreshAppleRemoteHIDStatus()
 #endif
@@ -2052,7 +2037,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         }
         _ = hidEventSuppressor.start()
         for profile in settings.remoteDeviceProfiles {
-            guard profile.model != .appleSiriRemoteA2854,
+            guard !profile.model.isAppleSiriRemote,
                   let fingerprint = profile.hidFingerprint
             else { continue }
             let monitor = makeHIDMonitor(
@@ -2126,7 +2111,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         )
         monitor.onStatus = { [weak self, weak monitor] value in
             guard let self, let monitor else { return }
-            if self.settings.selectedRemoteProfile?.model == .appleSiriRemoteA2854 {
+            if self.settings.selectedRemoteProfile?.model.isAppleSiriRemote == true {
                 return
             }
             if monitor.profileID == self.settings.selectedRemoteProfileID || monitor.profileID == nil {
@@ -2462,11 +2447,14 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         }
     }
 
-    private func handleAppleRemoteConnection(_ connection: AppleSiriRemoteAdapter.Connection) {
+    private func handleAppleRemoteConnection(_ connection: SiriRemoteConnection) {
         if connection.isConnected {
             let profileID = settings.profileID(forHIDFingerprint: connection.fingerprint)
-                ?? settings.registerAppleSiriRemote(fingerprint: connection.fingerprint)
-            settings.updateRemoteProfileModel(profileID, model: .appleSiriRemoteA2854)
+                ?? settings.registerAppleSiriRemote(
+                    fingerprint: connection.fingerprint,
+                    model: connection.model
+                )
+            settings.updateRemoteProfileModel(profileID, model: connection.model)
             appleRemoteProfileIDs[connection.device] = profileID
             connectedAppleRemoteProfileIDs.insert(profileID)
             if appleRemoteActiveButtons[connection.device] == nil {
@@ -2475,21 +2463,21 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             if appleRemoteActiveControlIDs[connection.device] == nil {
                 appleRemoteActiveControlIDs[connection.device] = []
             }
-            if appleRemoteTouchInterpreters[connection.device] == nil {
-                appleRemoteTouchInterpreters[connection.device] = AppleSiriRemoteTouchInterpreter()
-            }
             AppLogger.shared.write(
-                "APPLE REMOTE CONNECTION phase=completed result=connected model=a2854 " +
+                "APPLE REMOTE CONNECTION phase=completed result=connected " +
+                    "model=\(connection.model.rawValue) " +
                     "connected_devices=\(connectedAppleRemoteProfileIDs.count)"
             )
         } else {
             if let profileID = appleRemoteProfileIDs.removeValue(forKey: connection.device) {
                 connectedAppleRemoteProfileIDs.remove(profileID)
+                remoteBatteryLevels.removeValue(forKey: profileID)
+                remotePowerStates.removeValue(forKey: profileID)
             }
             resetAppleRemoteState(for: connection.device, reason: "device_disconnected")
-            appleRemoteTouchInterpreters.removeValue(forKey: connection.device)
             AppLogger.shared.write(
-                "APPLE REMOTE CONNECTION phase=completed result=disconnected model=a2854 " +
+                "APPLE REMOTE CONNECTION phase=completed result=disconnected " +
+                    "model=\(connection.model.rawValue) " +
                     "connected_devices=\(connectedAppleRemoteProfileIDs.count)"
             )
         }
@@ -2499,17 +2487,39 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         refreshBluetoothPresentation()
     }
 
-    private func handleAppleRemoteControlEvent(_ event: RemoteHardwareControlEvent) {
-        guard let control = AppleSiriRemoteControl(rawValue: event.controlID) else { return }
-        if control.isOnTouchSurface, event.phase == .began,
-           var interpreter = appleRemoteTouchInterpreters[event.device] {
-            interpreter.suppressCurrentContact()
-            appleRemoteTouchInterpreters[event.device] = interpreter
+    private func handleAppleRemotePowerSnapshot(_ snapshot: SiriRemotePowerSnapshot) {
+        guard let profileID = appleRemoteProfileIDs[snapshot.device] else {
+            AppLogger.shared.write(
+                "APPLE REMOTE POWER_BRIDGE phase=ignored result=profile_unavailable " +
+                    "model=\(snapshot.model.rawValue) availability=\(snapshot.availability.rawValue)"
+            )
+            return
         }
+        if snapshot.availability == .available {
+            if let level = snapshot.level {
+                remoteBatteryLevels[profileID] = min(100, max(0, level))
+            } else {
+                remoteBatteryLevels.removeValue(forKey: profileID)
+            }
+            remotePowerStates[profileID] = snapshot.powerState
+        } else {
+            remoteBatteryLevels.removeValue(forKey: profileID)
+            remotePowerStates.removeValue(forKey: profileID)
+        }
+        AppLogger.shared.write(
+            "APPLE REMOTE POWER_BRIDGE phase=completed result=\(snapshot.availability.rawValue) " +
+                "model=\(snapshot.model.rawValue) " +
+                "level=\(snapshot.level.map(String.init) ?? "unknown") " +
+                "state=\(snapshot.powerState.logValue) source=\(snapshot.source)"
+        )
+    }
+
+    private func handleAppleRemoteControlEvent(_ event: SiriRemoteControlEvent) {
+        let control = event.control
         if event.phase == .cancelled {
             resetAppleRemoteState(
                 for: event.device,
-                reason: event.cancellationReason?.rawValue ?? "unknown"
+                reason: event.cancellationReason ?? "unknown"
             )
             return
         }
@@ -2578,7 +2588,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     private func handleAppleRemoteButton(
         _ button: RemoteButton,
         phase: RemoteButtonPhase,
-        device: RemoteHardwareDeviceIdentity,
+        device: SiriRemoteDeviceIdentity,
         profileID: UUID
     ) {
         if phase == .release {
@@ -2675,7 +2685,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
 
     private func startAppleRemoteRepeatIfNeeded(
         for button: RemoteButton,
-        device: RemoteHardwareDeviceIdentity,
+        device: SiriRemoteDeviceIdentity,
         profileID: UUID
     ) {
         let configured = settings.configuredAction(
@@ -2781,7 +2791,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
 
     private func cancelAppleRemoteRepeat(
         for button: RemoteButton,
-        device: RemoteHardwareDeviceIdentity,
+        device: SiriRemoteDeviceIdentity,
         reason: String
     ) {
         let key = AppleRemoteButtonGestureKey(device: device, button: button)
@@ -2811,7 +2821,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
 
     private func processAppleRemoteGestureCommands(
         _ commands: [RemoteButtonGestureRecognizer.Command],
-        device: RemoteHardwareDeviceIdentity,
+        device: SiriRemoteDeviceIdentity,
         profileID: UUID
     ) -> Bool {
         for command in commands {
@@ -2851,7 +2861,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
 
     private func scheduleAppleRemoteDoubleClickTimeout(
         for button: RemoteButton,
-        device: RemoteHardwareDeviceIdentity,
+        device: SiriRemoteDeviceIdentity,
         profileID: UUID
     ) {
         let key = AppleRemoteButtonGestureKey(device: device, button: button)
@@ -2876,7 +2886,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
 
     private func scheduleAppleRemoteLongPressTimeout(
         for button: RemoteButton,
-        device: RemoteHardwareDeviceIdentity,
+        device: SiriRemoteDeviceIdentity,
         profileID: UUID
     ) {
         let key = AppleRemoteButtonGestureKey(device: device, button: button)
@@ -3037,11 +3047,11 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         )
     }
 
-    private func beginAppleRemoteVoice(for device: RemoteHardwareDeviceIdentity) {
+    private func beginAppleRemoteVoice(for device: SiriRemoteDeviceIdentity) {
         guard appleRemoteVoiceDevices.insert(device).inserted else { return }
-        suppressAppleRemoteTouchDuringVoice(for: device)
+        siriRemoteFeature.setVoiceTouchSuppressed(true)
         if appleRemoteVoiceStopping {
-            if appleRemoteAudioClient.resumeCaptureIfStopping() {
+            if siriRemoteFeature.resumeCaptureIfStopping() {
                 appleRemoteVoiceStopOperation &+= 1
                 appleRemoteVoiceStopping = false
                 audioOutput.cancelPendingDrain()
@@ -3051,7 +3061,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
                 )
                 return
             }
-            if appleRemoteAudioClient.beginCapture() {
+            if siriRemoteFeature.beginCapture() {
                 appleRemoteVoiceStopOperation &+= 1
                 appleRemoteVoiceStopping = false
                 audioOutput.cancelPendingDrain()
@@ -3082,6 +3092,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         loggedAppleRemoteAudioDevice = false
         guard ensureVirtualAudioOutputReady(reason: "apple_remote_voice_start") else {
             appleRemoteVoiceDevices.remove(device)
+            siriRemoteFeature.setVoiceTouchSuppressed(false)
             AppLogger.shared.write(
                 "APPLE REMOTE VOICE phase=failed result=audio_output_unavailable route=MiRemoteV_2ch"
             )
@@ -3093,13 +3104,15 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             owner: .appleRemote
         ) else {
             appleRemoteVoiceDevices.remove(device)
+            siriRemoteFeature.setVoiceTouchSuppressed(false)
             AppLogger.shared.write(
                 "APPLE REMOTE VOICE phase=failed result=voice_key_press_failed"
             )
             return
         }
-        guard appleRemoteAudioClient.beginCapture() else {
+        guard siriRemoteFeature.beginCapture() else {
             appleRemoteVoiceDevices.remove(device)
+            siriRemoteFeature.setVoiceTouchSuppressed(false)
             _ = releaseVoiceKeyIfNeeded(owner: .appleRemote, forceSoftware: true)
             AppLogger.shared.write(
                 "APPLE REMOTE VOICE phase=failed result=audio_capture_not_started"
@@ -3114,7 +3127,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     }
 
     private func endAppleRemoteVoice(
-        for device: RemoteHardwareDeviceIdentity,
+        for device: SiriRemoteDeviceIdentity,
         reason: String
     ) {
         guard appleRemoteVoiceDevices.remove(device) != nil else { return }
@@ -3141,7 +3154,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
                 "pending_buffers=\(outputBeforeStop.pendingBuffers) " +
                 "pending_samples=\(outputBeforeStop.pendingSamples)"
         )
-        appleRemoteAudioClient.stopCapture { [weak self] in
+        siriRemoteFeature.stopCapture { [weak self] in
             guard let self,
                   self.appleRemoteVoiceStopping,
                   self.appleRemoteVoiceStopOperation == stopOperation
@@ -3168,6 +3181,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         appleRemoteVoiceDevices.removeAll()
         let released = releaseVoiceKeyIfNeeded(owner: .appleRemote, forceSoftware: true)
         appleRemoteVoiceStopping = false
+        siriRemoteFeature.setVoiceTouchSuppressed(false)
         endVoiceSessionIfNeeded(flushAudio: false)
         let outputAfterStop = audioOutput.diagnosticSnapshot(
             deliveryGeneration: deliveryGeneration
@@ -3229,112 +3243,8 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         }
     }
 
-    private func handleAppleRemoteTouchEvent(_ event: RemoteHardwareTouchEvent) {
-        var interpreter = appleRemoteTouchInterpreters[event.device]
-            ?? AppleSiriRemoteTouchInterpreter()
-        let voiceBlocksTouch = AppleRemoteInteractionPolicy.blocksTouch(
-            activeVoiceDeviceCount: appleRemoteVoiceDevices.count,
-            voiceStopping: appleRemoteVoiceStopping
-        )
-        if voiceBlocksTouch, event.phase != .began {
-            interpreter.suppressCurrentContact()
-        }
-        let outputs = interpreter.handle(event)
-        if voiceBlocksTouch, event.phase == .began {
-            interpreter.suppressCurrentContact()
-        }
-        if event.phase == .began {
-            let touchSurfaceButtons: Set<RemoteButton> = [.up, .down, .left, .right, .ok]
-            if !(appleRemoteActiveButtons[event.device] ?? []).isDisjoint(
-                with: touchSurfaceButtons
-            ) {
-                interpreter.suppressCurrentContact()
-            }
-        }
-        appleRemoteTouchInterpreters[event.device] = interpreter
-        guard settings.customMappingEnabled else { return }
-
-        if event.phase == .began {
-            appleRemoteTouchOperationCounter &+= 1
-            appleRemoteTouchDiagnostics[event.device] = AppleRemoteTouchDiagnostic(
-                operationID: appleRemoteTouchOperationCounter,
-                voiceSuppressed: voiceBlocksTouch,
-                suppressedEventCount: voiceBlocksTouch ? 1 : 0
-            )
-            AppLogger.shared.write(
-                "APPLE REMOTE TOUCH operation_id=\(appleRemoteTouchOperationCounter) " +
-                    "phase=started result=tracking voice_suppressed=\(voiceBlocksTouch)"
-            )
-        }
-        if var diagnostic = appleRemoteTouchDiagnostics[event.device] {
-            if voiceBlocksTouch, event.phase != .began {
-                diagnostic.voiceSuppressed = true
-                diagnostic.suppressedEventCount += 1
-            }
-            for output in voiceBlocksTouch ? [] : outputs {
-                switch output {
-                case .move: diagnostic.moveCount += 1
-                case .scroll: diagnostic.scrollCount += 1
-                case .click: diagnostic.clickCount += 1
-                }
-                if !AppleSiriRemotePointerController.perform(output) {
-                    diagnostic.submissionFailureCount += 1
-                }
-            }
-            appleRemoteTouchDiagnostics[event.device] = diagnostic
-        }
-        if event.phase == .ended || event.phase == .cancelled {
-            finishAppleRemoteTouchDiagnostic(
-                for: event.device,
-                phase: event.phase == .ended ? "completed" : "cancelled",
-                reason: event.phase == .cancelled ? "hardware_cancelled" : "contact_ended"
-            )
-        }
-    }
-
-    private func suppressAppleRemoteTouchDuringVoice(
-        for device: RemoteHardwareDeviceIdentity
-    ) {
-        if var interpreter = appleRemoteTouchInterpreters[device] {
-            interpreter.suppressCurrentContact()
-            appleRemoteTouchInterpreters[device] = interpreter
-        }
-        if var diagnostic = appleRemoteTouchDiagnostics[device] {
-            diagnostic.voiceSuppressed = true
-            diagnostic.suppressedEventCount += 1
-            appleRemoteTouchDiagnostics[device] = diagnostic
-            AppLogger.shared.write(
-                "APPLE REMOTE TOUCH operation_id=\(diagnostic.operationID) " +
-                    "phase=suppressed result=blocked reason=voice_active"
-            )
-        }
-    }
-
-    private func finishAppleRemoteTouchDiagnostic(
-        for device: RemoteHardwareDeviceIdentity,
-        phase: String,
-        reason: String
-    ) {
-        guard let diagnostic = appleRemoteTouchDiagnostics.removeValue(forKey: device) else { return }
-        let submittedOutputCount = diagnostic.moveCount + diagnostic.scrollCount + diagnostic.clickCount
-        let result: String
-        if diagnostic.voiceSuppressed {
-            result = submittedOutputCount == 0 ? "suppressed" : "partially_suppressed"
-        } else {
-            result = diagnostic.submissionFailureCount == 0 ? "submitted" : "submission_failed"
-        }
-        AppLogger.shared.write(
-            "APPLE REMOTE TOUCH operation_id=\(diagnostic.operationID) phase=\(phase) " +
-                "result=\(result) reason=\(diagnostic.voiceSuppressed ? "voice_active" : reason) " +
-                "move_events=\(diagnostic.moveCount) " +
-                "scroll_events=\(diagnostic.scrollCount) click_events=\(diagnostic.clickCount) " +
-                "submission_failures=\(diagnostic.submissionFailureCount) " +
-                "suppressed_events=\(diagnostic.suppressedEventCount)"
-        )
-    }
-
     private func resetAppleRemoteState(
-        for device: RemoteHardwareDeviceIdentity,
+        for device: SiriRemoteDeviceIdentity,
         reason: String
     ) {
         if appleRemoteAppSwitcherSession.isActive {
@@ -3359,7 +3269,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         appleRemoteGestureRecognizers.removeValue(forKey: device)
         appleRemoteActiveButtons.removeValue(forKey: device)
         appleRemoteActiveControlIDs.removeValue(forKey: device)
-        finishAppleRemoteTouchDiagnostic(for: device, phase: "cancelled", reason: reason)
         endAppleRemoteVoice(for: device, reason: reason)
         refreshAppleRemoteActiveButtons()
         refreshAppleRemoteActiveControlIDs()
@@ -3368,12 +3277,10 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     private func resetAllAppleRemoteState(reason: String) {
         let devices = Set(appleRemoteProfileIDs.keys)
             .union(appleRemoteGestureRecognizers.keys)
-            .union(appleRemoteTouchDiagnostics.keys)
             .union(appleRemoteVoiceDevices)
         devices.forEach { resetAppleRemoteState(for: $0, reason: reason) }
         appleRemoteProfileIDs.removeAll()
         connectedAppleRemoteProfileIDs.removeAll()
-        appleRemoteTouchInterpreters.removeAll()
         appleRemoteActiveButtons.removeAll()
         appleRemoteActiveControlIDs.removeAll()
         activeAppleRemoteControlIDs = []
@@ -3382,7 +3289,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
 
     private func refreshAppleRemoteActiveButtons() {
         guard let selectedProfileID = settings.selectedRemoteProfileID,
-              settings.selectedRemoteProfile?.model == .appleSiriRemoteA2854
+              settings.selectedRemoteProfile?.model.isAppleSiriRemote == true
         else { return }
         activeRemoteButtons = appleRemoteProfileIDs.reduce(into: Set<RemoteButton>()) {
             result, entry in
@@ -3393,7 +3300,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
 
     private func refreshAppleRemoteActiveControlIDs() {
         guard let selectedProfileID = settings.selectedRemoteProfileID,
-              settings.selectedRemoteProfile?.model == .appleSiriRemoteA2854
+              settings.selectedRemoteProfile?.model.isAppleSiriRemote == true
         else { return }
         activeAppleRemoteControlIDs = appleRemoteProfileIDs.reduce(into: Set<String>()) {
             result, entry in
@@ -3403,7 +3310,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     }
 
     private func refreshAppleRemoteHIDStatus() {
-        guard settings.selectedRemoteProfile?.model == .appleSiriRemoteA2854 else { return }
+        guard settings.selectedRemoteProfile?.model.isAppleSiriRemote == true else { return }
         if !settings.customMappingEnabled {
             hidStatus = LocalizedMessage("button_mapping.status.system_managed")
         } else if !HIDRemoteMonitor.isInputMonitoringGranted {

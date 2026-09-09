@@ -369,9 +369,26 @@ fi
 xcrun vtool -show-build "$BINARY" | rg -Fq "minos $RELEASE_MIN_SYSTEM_VERSION"
 xcrun vtool -show-build "$MCP_HELPER" | rg -Fq "minos $RELEASE_MIN_SYSTEM_VERSION"
 if [[ "$SAYALL_SIRI_REMOTE_INCLUDED" == "true" ]]; then
-  xcrun vtool -show-build "$APPLE_REMOTE_AUDIO_HELPER" | rg -Fq "minos $RELEASE_MIN_SYSTEM_VERSION"
-  xcrun vtool -show-build "$APPLE_REMOTE_HCI_SERVICE" | rg -Fq "minos $RELEASE_MIN_SYSTEM_VERSION"
-  xcrun vtool -show-build "$OPUS_DYLIB" | rg -Fq "minos $RELEASE_MIN_SYSTEM_VERSION"
+  autoload -Uz is-at-least
+  embedded_component_minimum_is_supported() {
+    local component="$1"
+    local component_minos
+    component_minos="$(xcrun vtool -show-build "$component" | awk '/minos / { print $2; exit }')"
+    [[ -n "$component_minos" ]] || return 1
+    is-at-least "$component_minos" "$RELEASE_MIN_SYSTEM_VERSION"
+  }
+  embedded_component_minimum_is_supported "$APPLE_REMOTE_AUDIO_HELPER" || {
+    print -u2 "Apple Remote audio helper requires a newer macOS than the app release floor"
+    exit 1
+  }
+  embedded_component_minimum_is_supported "$APPLE_REMOTE_HCI_SERVICE" || {
+    print -u2 "Apple Remote HCI service requires a newer macOS than the app release floor"
+    exit 1
+  }
+  embedded_component_minimum_is_supported "$OPUS_DYLIB" || {
+    print -u2 "Apple Remote Opus library requires a newer macOS than the app release floor"
+    exit 1
+  }
 fi
 otool -l "$BINARY" | rg -A2 'LC_RPATH' | rg -q '@executable_path/\.\./Frameworks'
 

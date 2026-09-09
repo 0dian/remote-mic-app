@@ -552,6 +552,7 @@ struct SettingsView: View {
                 VStack(spacing: 0) {
                     macroFeature.settingsView(
                         selectedRemoteProfileID: settings.selectedRemoteProfileID,
+                        remoteModel: settings.selectedRemoteProfile?.model,
                         configuredActionTitle: { buttonValue, triggerValue in
                             guard let button = RemoteButton(rawValue: buttonValue),
                                   let trigger = ButtonTrigger(rawValue: triggerValue)
@@ -578,6 +579,7 @@ struct SettingsView: View {
             if macroFeature.isFeatureVisible {
                 macroFeature.buttonProfilesView(
                     selectedRemoteProfileID: settings.selectedRemoteProfileID,
+                    remoteModel: settings.selectedRemoteProfile?.model,
                     hostActionSections: buttonProfileHostActionSections
                 )
             } else {
@@ -590,7 +592,7 @@ struct SettingsView: View {
                 aboutPage
             }
         case .mapping:
-            if settings.selectedRemoteProfile?.model == .appleSiriRemoteA2854 {
+            if settings.selectedRemoteProfile?.model.isAppleSiriRemote == true {
                 #if SAYALL_SIRI_REMOTE_ENABLED && canImport(SayAllSiriRemote)
                 siriRemoteMappingPage
                 #else
@@ -877,7 +879,7 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var connectionRemotePhoto: some View {
-        if settings.selectedRemoteProfile?.model == .appleSiriRemoteA2854 {
+        if settings.selectedRemoteProfile?.model.isAppleSiriRemote == true {
             #if SAYALL_SIRI_REMOTE_ENABLED && canImport(SayAllSiriRemote)
             SiriRemoteConnectionPhoto()
             #else

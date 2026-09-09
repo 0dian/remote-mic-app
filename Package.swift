@@ -66,6 +66,16 @@ if siriRemoteExplicitlyEnabled && (siriRemotePackagePath ?? "").isEmpty {
 let privateArtifactPackagePath = ProcessInfo.processInfo.environment[
     "SAYALL_PRIVATE_ARTIFACT_PACKAGE_PATH"
 ]
+let macroPlatformPackagePath = ProcessInfo.processInfo.environment[
+    "SAYALL_MACRO_PLATFORM_PATH"
+]
+let macroCapabilitiesAvailable = macroPlatformPackagePath.map {
+    FileManager.default.fileExists(
+        atPath: URL(fileURLWithPath: $0)
+            .appendingPathComponent("Sources/SayAllMacroRemoteMic/RemoteMicRemoteCapabilities.swift")
+            .path
+    )
+} ?? false
 let macOSPlatform: SupportedPlatform = ProcessInfo.processInfo.environment["RELEASE_VARIANT"] == "intel"
     ? .macOS(.v13)
     : .macOS(.v14)
@@ -75,6 +85,9 @@ if siriRemoteEnabled {
 }
 if macRemoteEnabled {
     remoteMicSwiftSettings.append(.define("SAYALL_MAC_REMOTE_ENABLED"))
+}
+if macroCapabilitiesAvailable {
+    remoteMicSwiftSettings.append(.define("SAYALL_MACRO_REMOTE_CAPABILITIES"))
 }
 
 if let privateFeaturePath = ProcessInfo.processInfo.environment[
@@ -99,9 +112,7 @@ if let siriRemotePath = siriRemotePackagePath, !siriRemotePath.isEmpty {
     )
 }
 
-if let macroPlatformPath = ProcessInfo.processInfo.environment[
-    "SAYALL_MACRO_PLATFORM_PATH"
-], !macroPlatformPath.isEmpty {
+if let macroPlatformPath = macroPlatformPackagePath, !macroPlatformPath.isEmpty {
     let packageIdentity = URL(fileURLWithPath: macroPlatformPath)
         .lastPathComponent
         .lowercased()

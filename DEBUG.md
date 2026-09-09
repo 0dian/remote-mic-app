@@ -635,3 +635,53 @@ Siri Remote 新页面只完成了展示层映射，运行时仍把播放/静音�
 - 本地 App 构建和 `verify-app.sh` 通过；1020×772 生产窗口截图确认右键位于右列、卡片中心距收紧且当前可见区域无重叠。
 - 12 个可配置实体键的单击、双击、长按共 36 个入口已逐个打开并关闭编辑器，0 个失败。
 - 真实 A2854 的最终 CGEvent 类型、系统原生副作用和物理活动描边仍需真机按键验收；软件测试不能替代该边界。
+
+## 2026-09-07 组合动作重录快捷键串改
+
+### Observations
+
+- 用户场景：Routine A 的第 2 步为 `Ctrl+A`，Routine B 的第 2 步为 `Ctrl+B`；在重录 Routine A 第 2 步后，Routine B 第 2 步也被覆盖。
+- 公开宿主仅通过 `MacroFeatureIntegration` 调用私有 `SayAllMacroRemoteMic` 模块；组合动作编辑器位于 `sayall-private-platform/packages/macos-button-profiles`。
+- 私有编辑器录入快捷键时使用现有 `step.parameters.shortcutProfileKey` 作为保存 ID；该 ID 相同会由本机快捷键 Profile Store 原地替换记录。
+- 私有 `duplicateMacro` 只为复制步骤生成新的 `stepID`，没有为 `shortcutProfileKey` 生成新的所有权，因此复制后的动作步骤可与源动作共享同一个快捷键 Profile。
+- 现有测试只验证复制后的 `stepID` 不同，没有验证复制后快捷键 Profile 独立；当前没有覆盖“两个 Routine 分别重录”的测试或编辑日志。
+
+### Hypotheses
+
+#### H1：复制动作保留共享 `shortcutProfileKey`，重录按共享 ID 覆盖（ROOT HYPOTHESIS）
+
+- Supports：复制逻辑保留 `MacroParameters`；重录逻辑优先使用旧 `shortcutProfileKey`；Profile Store 对相同 ID 是替换语义。
+- Conflicts：尚未用最小运行实验确认两个 Routine 的最终值是否同时变化。
+- Test：按 UI 顺序创建 Ctrl+A、复制 Routine、再用复制步骤的同一 Profile ID 保存 Ctrl+B，检查源动作和副本是否都解析为 Ctrl+B。
+
+#### H2：SwiftUI `ForEach` 使用索引更新错误步骤
+
+- Supports：编辑器通过 `draft?.steps[index]` 修改步骤，异步录入完成后仍使用捕获的 `index`。
+- Conflicts：`ForEach` 的稳定 ID 是 `stepID`，且用户复现跨 Routine 而非同一 Routine 内移动步骤。
+- Test：不复制动作，创建两个独立步骤并重录第一个；若第二个不变，则索引不是跨 Routine 串改原因。
+
+#### H3：宏保存或“更新到最新版本”把相同内容广播到其他 Routine
+
+- Supports：`saveDraft` 会把同一宏的绑定更新到新版本。
+- Conflicts：Routine A/B 具有不同 `macroID`；绑定更新只按 `macroID` 过滤，不能解释另一 Routine 的步骤参数变化。
+- Test：在两个不同 `macroID` 的动作中使用不同 Profile ID，分别保存版本并检查另一动作的定义与 Profile 是否变化。
+
+### Experiments
+
+- 最小复制测试临时断言副本快捷键 Profile 独立性，旧实现失败并显示源与副本都为 `shortcut.shared`；实验断言随后撤回。
+- 当前事实源回归创建两个不同 `macroID` 的 Routine，共享 Ctrl+A Profile，重录其中一个为 Ctrl+B；修复后生成新 Profile ID，原 Profile 仍为 Ctrl+A，另一个 Routine 仍引用原 Profile。
+
+### Root Cause
+
+组合动作重录沿用已有 `shortcutProfileKey` 并原地更新全局 Profile；共享该 ID 的其他 Routine 因此一起显示和执行新快捷键。
+
+### Fix
+
+`sayall-private-platform/packages/macos-button-profiles` 的 `RemoteMicMacroController.saveShortcut` 现在对已存在的 Profile ID 采用 copy-on-write，自动生成新的 `shortcut.*` ID；页面只将新 ID 写回当前步骤，显式复用旧 Profile 的其他 Routine 不变。
+
+### Validation
+
+- 私有包定向回归：`swift test --disable-keychain --filter rerecordingSharedShortcutUsesCopyOnWriteAndKeepsOtherRoutineUnchanged` 通过。
+- 私有包全量 `swift test --disable-keychain`：51 项 XCTest + 86 项 Swift Testing，通过。
+- 宿主注入 `swift test --disable-keychain`：492 项、43 个 suite，通过。
+- 真实遥控器/第三方 App 流程仍需人工验收；未完成部分不表述为真机验收。

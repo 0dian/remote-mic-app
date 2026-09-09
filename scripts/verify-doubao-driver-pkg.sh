@@ -312,7 +312,12 @@ case "$MODE" in
       /usr/bin/plutil -convert xml1 -o - -- - | /usr/bin/grep -c '<string>')" = "1"
     HCI_MINIMUM_SYSTEM="$(/usr/bin/otool -l "$PAYLOAD_HCI_SERVICE" | \
       /usr/bin/awk '/LC_BUILD_VERSION/{seen=1; next} seen && /minos/{print $2; exit}')"
-    test "$HCI_MINIMUM_SYSTEM" = "$RELEASE_MIN_SYSTEM_VERSION"
+    autoload -Uz is-at-least
+    if [[ -z "$HCI_MINIMUM_SYSTEM" ]] || \
+       ! is-at-least "$HCI_MINIMUM_SYSTEM" "$RELEASE_MIN_SYSTEM_VERSION"; then
+      print -u2 "packaged Apple Remote HCI service requires a newer macOS than the app release floor"
+      exit 1
+    fi
     test "$(/usr/bin/plutil -extract LSMinimumSystemVersion raw -o - \
       "$PAYLOAD_APP/Contents/Info.plist")" = "$RELEASE_MIN_SYSTEM_VERSION"
     test "$(/usr/bin/plutil -extract SUFeedURL raw -o - \
