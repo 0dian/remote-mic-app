@@ -1230,6 +1230,19 @@ struct SettingsPageRegressionTests {
         #expect(source.contains("expandedShareSection = .about"))
         #expect(source.contains("ShareCard(url: shareURL)"))
         #expect(!source.contains(".popover"))
+
+        let aboutStart = try #require(source.range(of: "private var aboutPage"))
+        let supportHelperStart = try #require(source.range(
+            of: "private var settingsSupportSection",
+            range: aboutStart.upperBound..<source.endIndex
+        ))
+        let aboutPageSource = source[aboutStart.lowerBound..<supportHelperStart.lowerBound]
+        let diagnosticsPosition = try #require(aboutPageSource.range(of: "inlineDiagnosticsSection"))
+        let supportPosition = try #require(aboutPageSource.range(of: "settingsSupportSection"))
+        let sharePosition = try #require(aboutPageSource.range(of: "sharePanel(for: .about)"))
+        #expect(diagnosticsPosition.lowerBound < supportPosition.lowerBound)
+        #expect(supportPosition.lowerBound < sharePosition.lowerBound)
+        #expect(aboutPageSource[sharePosition.upperBound...].contains("sharePanel(for: .about)") == false)
     }
 
     @Test func profileMetricsKeepApprovedWideSingleRowLayout() throws {

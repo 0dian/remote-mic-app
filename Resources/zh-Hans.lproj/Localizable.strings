@@ -379,6 +379,7 @@
 "diagnostics.title" = "诊断";
 "diagnostics.logs.title" = "应用日志";
 "diagnostics.logs.privacy" = "日志不记录语音内容、蓝牙地址或设备唯一标识。";
+"diagnostics.logs.last_entry" = "查看运行日志或复制脱敏诊断摘要。";
 "diagnostics.logs.show_in_finder" = "在 Finder 中显示日志";
 "diagnostics.logs.copy_summary" = "复制诊断摘要";
 "common.status.connected" = "已连接";
@@ -467,10 +468,13 @@
 "settings.section.settings" = "设置";
 "settings.page.title" = "设置";
 "settings.permissions.title" = "权限与隐私";
+"settings.permissions.description" = "SayAll 需要以下系统权限才能正常工作。您的数据仅在本地处理，不会上传到任何服务器。";
 "settings.general.title" = "通用";
 "settings.general.launch_behavior" = "启动行为";
 "settings.general.launch_behavior_help" = "设置登录后自动启动和应用启动时是否打开主窗口。";
 "settings.diagnostics.title" = "诊断与日志";
+"settings.application_updates.title" = "应用与更新";
+"settings.application.tagline" = "让语音触手可及";
 "settings.section.statistics" = "个人中心";
 "settings.section.transcripts" = "回眸";
 "about.page.subtitle" = "查看版本、更新、语言和应用显示选项";

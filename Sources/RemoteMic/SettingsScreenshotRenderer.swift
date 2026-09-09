@@ -52,6 +52,9 @@ enum SettingsScreenshotRenderer {
         let showsStandardKeyboard = ProcessInfo.processInfo.environment[
             "REMOTE_MIC_SETTINGS_SCREENSHOT_SHORTCUT_MODE"
         ] == "keyboard"
+        let expandsShare = ProcessInfo.processInfo.environment[
+            "REMOTE_MIC_SETTINGS_SCREENSHOT_EXPAND_SHARE"
+        ] == "1"
         try FileManager.default.createDirectory(
             at: outputDirectory,
             withIntermediateDirectories: true
@@ -78,6 +81,7 @@ enum SettingsScreenshotRenderer {
         seedStatisticsForScreenshot(settings)
         let model = BridgeAppModel(settings: settings)
         let updateInformation = UpdateInformationStore()
+        seedAvailableUpdate(updateInformation, language: language)
         let localization = LocalizationStore(settings: settings)
         model.privateFeature.updateLocaleIdentifier(localization.locale.identifier)
         model.macroFeature.updateLocaleIdentifier(localization.locale.identifier)
@@ -93,7 +97,7 @@ enum SettingsScreenshotRenderer {
                 model: model,
                 updateInformation: updateInformation,
                 initialSection: section,
-                initialShareSection: section == .about ? section : nil,
+                initialShareSection: section == .about && expandsShare ? section : nil,
                 initialMappingEditingButton: section == .mapping && opensShortcutEditor
                     ? .ok
                     : nil,
@@ -138,6 +142,26 @@ enum SettingsScreenshotRenderer {
             window.orderOut(nil)
             window.contentViewController = nil
         }
+    }
+
+    private static func seedAvailableUpdate(
+        _ updateInformation: UpdateInformationStore,
+        language: AppLanguage
+    ) {
+        let notes: String
+        switch language {
+        case .simplifiedChinese:
+            notes = "优化设置页面结构\n权限与日志集中管理\n修复已知问题"
+        case .system, .english:
+            notes = "Refined the Settings layout\nCentralized permissions and logs\nFixed known issues"
+        }
+        updateInformation.setAvailable(
+            displayVersion: "1.9.22",
+            buildVersion: "183",
+            archiveURL: nil,
+            fallbackDescription: notes,
+            localeIdentifier: language.rawValue
+        )
     }
 
     private static func seedStatisticsForScreenshot(_ settings: AppSettings) {

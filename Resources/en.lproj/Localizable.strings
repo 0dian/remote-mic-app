@@ -379,6 +379,7 @@
 "diagnostics.title" = "Diagnostics";
 "diagnostics.logs.title" = "App Logs";
 "diagnostics.logs.privacy" = "Logs do not record voice content, Bluetooth addresses, or unique device identifiers.";
+"diagnostics.logs.last_entry" = "View runtime logs or copy a redacted diagnostic summary.";
 "diagnostics.logs.show_in_finder" = "Show Logs in Finder";
 "diagnostics.logs.copy_summary" = "Copy Diagnostic Summary";
 "common.status.connected" = "Connected";
@@ -467,10 +468,13 @@
 "settings.section.settings" = "Settings";
 "settings.page.title" = "Settings";
 "settings.permissions.title" = "Permissions & Privacy";
+"settings.permissions.description" = "SayAll needs these system permissions to work. Your data is processed locally and is never uploaded to a server.";
 "settings.general.title" = "General";
 "settings.general.launch_behavior" = "Launch Behavior";
 "settings.general.launch_behavior_help" = "Choose whether to launch at login and open the main window when the app starts.";
 "settings.diagnostics.title" = "Diagnostics & Logs";
+"settings.application_updates.title" = "App & Updates";
+"settings.application.tagline" = "Voice within reach";
 "settings.section.statistics" = "Profile";
 "settings.section.transcripts" = "Reflections";
 "about.page.subtitle" = "View version, updates, language, and app display options";
