@@ -2,7 +2,7 @@
 
 ## 状态与影响
 
-- 状态：已修复，本地公开/私有双路径验证通过，等待 PR CI。
+- 状态：已修复，本地公开/私有双路径与 PR CI 验证通过。
 - 影响范围：公开仓库贡献者、Fork PR、macOS Apple Silicon 与 Intel Ventura CI，以及受保护发布构建。
 - 错误行为：公开 `Package.swift` 直接声明私有 `sayall-mac-remote` Git 依赖。没有该仓库权限的用户在 SwiftPM resolve 阶段失败，无法编译、测试或运行公开项目；若简单跳过 CI，则官方检查也会失去公开基线和私有集成覆盖。
 - 正常行为：公开 checkout 不接触私有 Git URL并始终完成公开测试和构建；官方 CI 有权限时追加私有集成检查；受保护发布缺少私有组件时继续失败。
@@ -35,13 +35,14 @@
 ## 验证
 
 - 公开 `swift package resolve --disable-keychain`：通过，依赖图只有公开 Sparkle。
-- 公开 `swift test --disable-keychain`：457 项通过。
+- 公开 `swift test --disable-keychain`：458 项通过。
 - 公开 Apple Silicon Release build：通过。
 - 公开 Intel Ventura Release build：通过。
 - 零私有路径 `scripts/build-app.sh`：成功生成并校验 `dist/SayAll.app`。
-- 固定三项私有 Package 路径 `swift test --disable-keychain --scratch-path .build-private/local`：461 项通过，包含私有 Watch BLE 旅程测试。
+- 固定三项私有 Package 路径 `swift test --disable-keychain --scratch-path .build-private/local-merged`：462 项通过，包含私有 Watch BLE 旅程测试。
 - `scripts/test-macos-release-flow.sh`、`scripts/verify-release-dependency-pins.sh`、`SKIP_SWIFT_PACKAGE_BUILD=1 scripts/test.sh`：通过。
+- PR #392 的 [macOS CI Run 34294743333](https://github.com/HD838A/remote-mic-app/actions/runs/34294743333)：Apple Silicon 与 Intel Ventura 均先完成公开完整测试、self-test 和 Release build；随后实际 checkout 三项固定私有依赖，并完成私有完整测试与对应架构 Release build。所有步骤通过，私有步骤不是 skipped。
 
 ## 验证边界
 
-本地验证证明公开与私有 Package 组合均可编译、测试，公开 App bundle 可生成并通过签名结构校验。GitHub 上 Fork 无 Secret 时的 skipped 状态、官方仓库 Secret 可用时私有步骤的实际执行状态，以及真实用户图形界面启动仍以 PR CI 和后续人工环境验收为准；本次不改变运行时协议、音频、HID 或用户数据。
+本地验证证明公开与私有 Package 组合均可编译、测试，公开 App bundle 可生成并通过签名结构校验；官方 PR CI 已证明仓库 Secret 可用时私有步骤实际执行。Fork 无 Secret 时的跳过状态仍由条件逻辑和公开路径强制环境验证覆盖，没有另建外部 Fork fixture；真实用户图形界面启动仍属于后续人工环境验收。本次不改变运行时协议、音频、HID 或用户数据。
