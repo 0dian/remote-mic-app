@@ -102,6 +102,43 @@ struct BuildSigningTests {
         #expect(modelSource.contains("appleRemoteAudioClient.start()"))
     }
 
+    @Test func macRemoteIsOptionalForPublicBuildsAndRequiredForRelease() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let packageSource = try String(
+            contentsOf: root.appendingPathComponent("Package.swift"),
+            encoding: .utf8
+        )
+        let resolvedSource = try String(
+            contentsOf: root.appendingPathComponent("Package.resolved"),
+            encoding: .utf8
+        )
+        let buildSource = try String(
+            contentsOf: root.appendingPathComponent("scripts/build-app.sh"),
+            encoding: .utf8
+        )
+        let workflowSource = try String(
+            contentsOf: root.appendingPathComponent(
+                ".github/workflows/mac-release-package.yml"
+            ),
+            encoding: .utf8
+        )
+
+        #expect(packageSource.contains("SAYALL_MAC_REMOTE_PACKAGE_PATH"))
+        #expect(packageSource.contains("Sources/PublicRemoteCompatibility/Core"))
+        #expect(packageSource.contains("Sources/PublicRemoteCompatibility/UI"))
+        #expect(!packageSource.contains("https://github.com/GetSayAll/sayall-mac-remote.git"))
+        #expect(!resolvedSource.contains("sayall-mac-remote"))
+        #expect(buildSource.contains("REQUIRE_SAYALL_MAC_REMOTE_PACKAGE"))
+        #expect(buildSource.contains("A SayAll Mac remote package is required for this build"))
+        #expect(workflowSource.contains(
+            "SAYALL_MAC_REMOTE_PACKAGE_PATH=$GITHUB_WORKSPACE/.private-dependencies/sayall-mac-remote"
+        ))
+        #expect(workflowSource.contains("REQUIRE_SAYALL_MAC_REMOTE_PACKAGE=1"))
+    }
+
     @Test func productionReleaseRequiresAndVerifiesWebRemoteConfiguration() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -770,9 +807,11 @@ struct BuildSigningTests {
         #expect(workflowSource.contains("RELEASE_CREDENTIALS_DEPLOY_KEY"))
         #expect(workflowSource.contains("APPLE_SIGNING_MATCH_DEPLOY_KEY"))
         #expect(workflowSource.contains("RELEASE_AGE_IDENTITY"))
-        #expect(workflowSource.contains("GetSayAll/sayall-mac-remote"))
+        #expect(workflowSource.contains(
+            "steps.release-dependencies.outputs.sayall_mac_remote_repository"
+        ))
         #expect(workflowSource.contains("SAYALL_MAC_REMOTE_DEPLOY_KEY"))
-        #expect(workflowSource.contains("swift package config set-mirror"))
+        #expect(workflowSource.contains("SAYALL_MAC_REMOTE_PACKAGE_PATH"))
         #expect(workflowSource.contains("HD838A/remotemic-notary-secrets"))
         #expect(workflowSource.contains("HD838A/apple-signing-match"))
         #expect(workflowSource.contains("package-macos-release-in-actions.sh"))

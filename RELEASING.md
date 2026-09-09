@@ -18,8 +18,8 @@
 1. 记录用户请求时间 request_started_at 和 request_id。T_ready 表示源码已进入精确 `main` 或已批准 Hotfix 分支、源码分支 CI 和依赖 pin 已通过、版本/Build/Release Notes 已冻结的时刻；Preview 和 Stable 从 T_ready 起均以 30 分钟为纯发布目标。重试不重置时间，也不以时间目标替代签名、公证、staple 或 UI 验收。
 2. fetch `origin main --tags`，确认发布控制 worktree 干净、HEAD 与 `origin/main` 精确一致。普通源码必须是同一 `main` SHA；Hotfix 源码必须是 `origin/hotfix/vX.Y.Z` 的精确 HEAD，并由脚本验证当前稳定 Tag、版本和线性历史。
 3. 检查产品 Commit 已经通过普通 PR 合入 main。若用户指定 Commit 尚未合入，先在独立集成分支重放指定改动，逐个解决机械冲突，完成普通 PR、双架构 CI 后再继续；冲突涉及产品取舍时报告并暂停该取舍，不接触 Apple 凭据。
-4. 检查 config/release-dependencies.json、Package.swift、Package.resolved 和受保护 workflow 使用相同的完整依赖 SHA；运行 scripts/verify-release-dependency-pins.sh。
-5. 运行 scripts/verify-release-ready-main-ci.sh，确认 Apple Silicon 与 Intel Ventura 的源码分支 push CI 都完成 Swift tests、项目 self-test 和 Release build。脚本名为历史兼容名称；发布控制面 fixture 不得冒充产品 CI。
+4. 检查 `config/release-dependencies.json` 与受保护 workflow 使用相同的私有依赖完整 SHA，同时确认公开 `Package.swift`、`Package.resolved` 不解析私有仓库；运行 `scripts/verify-release-dependency-pins.sh`。
+5. 运行 `scripts/verify-release-ready-main-ci.sh`，确认 Apple Silicon 与 Intel Ventura 的源码分支 push CI 都完成无私有权限也可执行的 Swift tests、项目 self-test 和 Release build。官方 CI 探测到私有 deploy key 可用时，还必须完成固定私有 Commit 的集成测试和双架构 Release build；脚本名为历史兼容名称，发布控制面 fixture 不得冒充产品 CI。
 
 ### Hotfix 准备
 
@@ -52,6 +52,7 @@ ReleaseHistory 的版本标题由 `scripts/sync-release-history-labels.mjs` 按 
 受保护 workflow 的 package job 才能读取 Apple/Match/Notary/Sparkle 凭据，并且必须：
 
 - 在 mac-release Environment 内使用只读 Match、隔离临时 Keychain 和最小权限；
+- 按 `config/release-dependencies.json` checkout 并验证全部发布所需私有 Package；缺少权限、路径、固定 Commit 或组件时立即失败，不得降级为公开兼容层发布；
 - 独立构建 Apple Silicon/macOS 14 与 Intel Ventura/macOS 13 两条 lane；
 - 对 App、Framework、XPC、Helper、Installer、DMG 和 ZIP 完成 Developer ID 签名、Apple 公证、staple、Gatekeeper 和权限/符号链接校验；
 - 使用独立 SwiftPM scratch/output，独立提交可并行的 PKG 公证；
