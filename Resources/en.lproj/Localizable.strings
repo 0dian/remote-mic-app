@@ -372,6 +372,7 @@
 "permission.input_monitoring.title" = "Input Monitoring";
 "permission.input_monitoring.description" = "Read remote buttons and reduce duplicate original system actions";
 "permission.action.request" = "Request Permission";
+"permission.action.open_settings" = "Open System Settings";
 "permission.accessibility.title" = "Accessibility";
 "permission.accessibility.description" = "Send mapped button actions to the current app";
 "permissions.upgrade_identity_help" = "If permissions disappeared after an upgrade, keep this Developer ID signed build in Applications and request the missing permission once. Later signed updates will reuse the same system identity.";
@@ -379,6 +380,7 @@
 "diagnostics.logs.title" = "App Logs";
 "diagnostics.logs.privacy" = "Logs do not record voice content, Bluetooth addresses, or unique device identifiers.";
 "diagnostics.logs.show_in_finder" = "Show Logs in Finder";
+"diagnostics.logs.copy_summary" = "Copy Diagnostic Summary";
 "common.status.connected" = "Connected";
 "common.status.connecting" = "Connecting";
 "common.status.preparing" = "Preparing";
@@ -462,6 +464,13 @@
 "common.action.copy_link" = "Copy Link";
 "common.status.copied" = "Copied";
 "settings.section.about" = "About";
+"settings.section.settings" = "Settings";
+"settings.page.title" = "Settings";
+"settings.permissions.title" = "Permissions & Privacy";
+"settings.general.title" = "General";
+"settings.general.launch_behavior" = "Launch Behavior";
+"settings.general.launch_behavior_help" = "Choose whether to launch at login and open the main window when the app starts.";
+"settings.diagnostics.title" = "Diagnostics & Logs";
 "settings.section.statistics" = "Profile";
 "settings.section.transcripts" = "Reflections";
 "about.page.subtitle" = "View version, updates, language, and app display options";

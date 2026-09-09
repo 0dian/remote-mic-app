@@ -34,7 +34,6 @@ enum SettingsScreenshotRenderer {
         .statistics,
         .transcripts,
         .connection,
-        .permissions,
         .about,
     ]
 

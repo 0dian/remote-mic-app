@@ -35,7 +35,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .statistics: return "settings.section.statistics"
         case .transcripts: return "settings.section.transcripts"
         case .permissions: return "settings.section.permissions"
-        case .about: return "settings.section.about"
+        case .about: return "settings.section.settings"
         }
     }
 
@@ -50,7 +50,7 @@ enum SettingsSection: String, CaseIterable, Identifiable {
         case .statistics: return "person.crop.circle"
         case .transcripts: return "text.bubble.fill"
         case .permissions: return "shield.lefthalf.filled"
-        case .about: return "info.circle"
+        case .about: return "gearshape"
         }
     }
 }
@@ -195,7 +195,6 @@ struct SettingsView: View {
         .transcripts,
         .connection,
         .privateFeature,
-        .permissions,
         .about,
     ]
 
@@ -606,7 +605,9 @@ struct SettingsView: View {
         case .transcripts:
             transcriptHistoryPage
         case .permissions:
-            permissionsPage
+            // Keep the legacy route for onboarding and update-repair callers,
+            // but render the consolidated settings destination.
+            aboutPage
         case .about:
             aboutPage
         }
@@ -2318,95 +2319,10 @@ struct SettingsView: View {
         }
     }
 
+    // Legacy entry point retained for callers that still ask for the old route.
+    // The visible navigation now renders permissions and diagnostics inline in Settings.
     private var permissionsPage: some View {
-        settingsPage {
-            PageHeader(title: localization.text("permissions.page.title"))
-        } content: {
-            CompatibilityGlassContainer(spacing: 14) {
-                GlassPanel {
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text("permissions.required.title")
-                            .font(.headline)
-                            .padding(.bottom, 8)
-
-                        permissionRow(
-                            index: 1,
-                            symbol: "antenna.radiowaves.left.and.right",
-                            title: localization.text("permission.bluetooth.title"),
-                            detail: localization.text("permission.bluetooth.description"),
-                            state: bluetoothPermissionState,
-                            actionTitle: localization.text("permission.bluetooth.open_settings")
-                        ) {
-                            if let url = URL(string: "x-apple.systempreferences:com.apple.BluetoothSettings") {
-                                NSWorkspace.shared.open(url)
-                            }
-                        }
-
-                        Divider().padding(.leading, 62)
-
-                        permissionRow(
-                            index: 2,
-                            symbol: "keyboard",
-                            title: localization.text("permission.input_monitoring.title"),
-                            detail: localization.text("permission.input_monitoring.description"),
-                            state: inputMonitoringGranted ? .granted : .pending,
-                            actionTitle: localization.text("permission.action.request")
-                        ) {
-                            model.requestInputMonitoringPermission()
-                        }
-
-                        Divider().padding(.leading, 62)
-
-                        permissionRow(
-                            index: 3,
-                            symbol: "accessibility",
-                            title: localization.text("permission.accessibility.title"),
-                            detail: localization.text("permission.accessibility.description"),
-                            state: accessibilityGranted ? .granted : .pending,
-                            actionTitle: localization.text("permission.action.request")
-                        ) {
-                            model.requestAccessibilityPermission()
-                        }
-
-                        if settings.isOnboardingComplete,
-                           !inputMonitoringGranted || !accessibilityGranted {
-                            Divider().padding(.leading, 62)
-                            Label("permissions.upgrade_identity_help", systemImage: "arrow.triangle.2.circlepath")
-                                .font(.system(size: 12))
-                                .foregroundStyle(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
-                                .padding(.vertical, 12)
-                        }
-                    }
-                }
-
-                GlassPanel {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("diagnostics.title")
-                            .font(.headline)
-                        HStack(spacing: 12) {
-                            Image(systemName: "doc.text.magnifyingglass")
-                                .font(.title3)
-                                .foregroundStyle(Color.accentColor)
-                                .frame(width: 34, height: 34)
-                                .compatibilityTintedGlass(
-                                    tint: Color.accentColor.opacity(0.14),
-                                    in: Circle()
-                                )
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text("diagnostics.logs.title")
-                                Text("diagnostics.logs.privacy")
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
-                            Spacer()
-                            Button("diagnostics.logs.show_in_finder") { model.openLogFolder() }
-                                .compatibilityButtonStyle(.standard)
-                        }
-                    }
-                }
-            }
-        }
+        aboutPage
     }
 
     private var statisticsPage: some View {
@@ -2722,9 +2638,116 @@ struct SettingsView: View {
         EmptyView()
     }
 
+    private var inlinePermissionsSection: some View {
+        GlassPanel {
+            VStack(alignment: .leading, spacing: 0) {
+                Text("settings.permissions.title")
+                    .font(.headline)
+                    .padding(.bottom, 8)
+
+                permissionRow(
+                    index: 1,
+                    symbol: "antenna.radiowaves.left.and.right",
+                    title: localization.text("permission.bluetooth.title"),
+                    detail: localization.text("permission.bluetooth.description"),
+                    state: bluetoothPermissionState,
+                    actionTitle: localization.text("permission.bluetooth.open_settings")
+                ) {
+                    openSettingsURL("x-apple.systempreferences:com.apple.BluetoothSettings")
+                }
+
+                Divider().padding(.leading, 62)
+
+                permissionRow(
+                    index: 2,
+                    symbol: "keyboard",
+                    title: localization.text("permission.input_monitoring.title"),
+                    detail: localization.text("permission.input_monitoring.description"),
+                    state: inputMonitoringGranted ? .granted : .pending,
+                    actionTitle: localization.text(
+                        inputMonitoringGranted
+                            ? "permission.action.open_settings"
+                            : "permission.action.request"
+                    )
+                ) {
+                    if inputMonitoringGranted {
+                        openSettingsURL(
+                            "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
+                        )
+                    } else {
+                        model.requestInputMonitoringPermission()
+                    }
+                }
+
+                Divider().padding(.leading, 62)
+
+                permissionRow(
+                    index: 3,
+                    symbol: "accessibility",
+                    title: localization.text("permission.accessibility.title"),
+                    detail: localization.text("permission.accessibility.description"),
+                    state: accessibilityGranted ? .granted : .pending,
+                    actionTitle: localization.text(
+                        accessibilityGranted
+                            ? "permission.action.open_settings"
+                            : "permission.action.request"
+                    )
+                ) {
+                    if accessibilityGranted {
+                        openSettingsURL(
+                            "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+                        )
+                    } else {
+                        model.requestAccessibilityPermission()
+                    }
+                }
+
+                if settings.isOnboardingComplete,
+                   !inputMonitoringGranted || !accessibilityGranted {
+                    Divider().padding(.leading, 62)
+                    Label("permissions.upgrade_identity_help", systemImage: "arrow.triangle.2.circlepath")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.vertical, 12)
+                }
+            }
+        }
+    }
+
+    private var inlineDiagnosticsSection: some View {
+        GlassPanel {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("settings.diagnostics.title")
+                    .font(.headline)
+                HStack(spacing: 12) {
+                    Image(systemName: "doc.text.magnifyingglass")
+                        .font(.title3)
+                        .foregroundStyle(Color.accentColor)
+                        .frame(width: 34, height: 34)
+                        .compatibilityTintedGlass(
+                            tint: Color.accentColor.opacity(0.14),
+                            in: Circle()
+                        )
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("diagnostics.logs.title")
+                        Text("diagnostics.logs.privacy")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Button("diagnostics.logs.show_in_finder") { model.openLogFolder() }
+                        .compatibilityButtonStyle(.standard)
+                    Button("diagnostics.logs.copy_summary") { copySettingsDiagnosticSummary() }
+                        .compatibilityButtonStyle(.standard)
+                }
+            }
+        }
+    }
+
     private var aboutPage: some View {
         settingsPage {
-            PageHeader(title: localization.text("menu.about"))
+            PageHeader(title: localization.text("settings.page.title"))
         } content: {
             CompatibilityGlassContainer(spacing: 14) {
                 VStack(spacing: 14) {
@@ -2884,50 +2907,31 @@ struct SettingsView: View {
                         }
                     }
 
-                    if privateFeature.shouldShowEnrollment {
-                        privateFeature.enrollmentView()
-                    }
+                    inlinePermissionsSection
 
-                    if macroFeature.shouldShowEnrollment {
-                        macroFeature.enrollmentView()
-                    }
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("settings.general.title")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity, alignment: .leading)
 
-                    GlassPanel {
-                        VStack(spacing: 0) {
+                        GlassPanel {
+                            VStack(spacing: 0) {
                             HStack(spacing: 14) {
-                                Image(systemName: "square.and.arrow.up")
+                                Image(systemName: "arrow.up.arrow.down")
                                     .font(.title3)
                                     .foregroundStyle(Color.accentColor)
                                     .frame(width: 34)
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text("about.configuration.export")
+                                    Text("about.configuration.title")
                                         .font(.subheadline.weight(.semibold))
                                     Text("about.configuration.export_description")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }
-                                Spacer()
+                                Spacer(minLength: 16)
                                 Button("about.configuration.export", action: exportConfiguration)
                                     .compatibilityButtonStyle(.standard)
                                     .frame(width: 92)
-                            }
-                            .padding(.vertical, 10)
-
-                            Divider()
-
-                            HStack(spacing: 14) {
-                                Image(systemName: "square.and.arrow.down")
-                                    .font(.title3)
-                                    .foregroundStyle(Color.accentColor)
-                                    .frame(width: 34)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("about.configuration.import")
-                                        .font(.subheadline.weight(.semibold))
-                                    Text("about.configuration.import_description")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
                                 Button("about.configuration.import", action: importConfiguration)
                                     .compatibilityButtonStyle(.standard)
                                     .frame(width: 92)
@@ -2973,69 +2977,66 @@ struct SettingsView: View {
                             Divider()
 
                             HStack(spacing: 14) {
-                                Image(systemName: "rectangle.portrait.and.arrow.forward")
+                                Image(systemName: "power")
                                     .font(.title3)
                                     .foregroundStyle(Color.accentColor)
                                     .frame(width: 34)
                                 VStack(alignment: .leading, spacing: 3) {
-                                    Text("about.preferences.launch_at_login")
+                                    Text("settings.general.launch_behavior")
                                         .font(.subheadline.weight(.semibold))
-                                    Text("about.preferences.launch_at_login_help")
+                                    Text("settings.general.launch_behavior_help")
                                         .font(.system(size: 12))
                                         .foregroundStyle(.secondary)
                                         .fixedSize(horizontal: false, vertical: true)
-                                    if loginItemService.requiresApproval {
-                                        Text("about.preferences.launch_at_login_requires_approval")
-                                            .font(.system(size: 12))
-                                            .foregroundStyle(.orange)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                    } else if loginItemService.didFailToUpdate {
-                                        Text("about.preferences.launch_at_login_update_failed")
-                                            .font(.system(size: 12))
-                                            .foregroundStyle(.red)
-                                            .fixedSize(horizontal: false, vertical: true)
-                                    }
                                 }
-                                Spacer(minLength: 16)
-                                VStack(alignment: .trailing, spacing: 8) {
-                                    Toggle("", isOn: Binding(
-                                        get: { loginItemService.isEnabled },
-                                        set: { loginItemService.setEnabled($0) }
-                                    ))
-                                    .labelsHidden()
-                                    .toggleStyle(.switch)
+                                Spacer(minLength: 12)
+                                HStack(spacing: 10) {
+                                    VStack(alignment: .trailing, spacing: 4) {
+                                        Text("about.preferences.launch_at_login")
+                                            .font(.system(size: 12, weight: .medium))
+                                        Toggle("", isOn: Binding(
+                                            get: { loginItemService.isEnabled },
+                                            set: { loginItemService.setEnabled($0) }
+                                        ))
+                                        .labelsHidden()
+                                        .toggleStyle(.switch)
+                                    }
 
-                                    if loginItemService.requiresApproval {
-                                        Button(
-                                            "about.preferences.launch_at_login_open_system_settings",
-                                            action: loginItemService.openLoginItemsSettings
-                                        )
-                                        .compatibilityButtonStyle(.standard)
+                                    Divider()
+                                        .frame(height: 34)
+
+                                    VStack(alignment: .trailing, spacing: 4) {
+                                        Text("about.preferences.open_main_window_at_launch")
+                                            .font(.system(size: 12, weight: .medium))
+                                        Toggle("", isOn: $settings.openMainWindowAtLaunch)
+                                            .labelsHidden()
+                                            .toggleStyle(.switch)
                                     }
                                 }
                             }
                             .padding(.vertical, 10)
 
-                            Divider()
-
-                            HStack(spacing: 14) {
-                                Image(systemName: "macwindow")
-                                    .font(.title3)
-                                    .foregroundStyle(Color.accentColor)
-                                    .frame(width: 34)
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text("about.preferences.open_main_window_at_launch")
-                                        .font(.subheadline.weight(.semibold))
-                                    Text("about.preferences.open_main_window_help")
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                }
-                                Spacer()
-                                Toggle("", isOn: $settings.openMainWindowAtLaunch)
-                                    .labelsHidden()
-                                    .toggleStyle(.switch)
+                            if loginItemService.requiresApproval {
+                                Text("about.preferences.launch_at_login_requires_approval")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.orange)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .frame(maxWidth: .infinity, alignment: .trailing)
+                                    .padding(.bottom, 8)
+                                Button(
+                                    "about.preferences.launch_at_login_open_system_settings",
+                                    action: loginItemService.openLoginItemsSettings
+                                )
+                                .compatibilityButtonStyle(.standard)
+                                .frame(maxWidth: .infinity, alignment: .trailing)
+                            } else if loginItemService.didFailToUpdate {
+                                Text("about.preferences.launch_at_login_update_failed")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.red)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                    .frame(maxWidth: .infinity, alignment: .trailing)
+                                    .padding(.bottom, 8)
                             }
-                            .padding(.vertical, 10)
 
                             Divider()
 
@@ -3089,8 +3090,19 @@ struct SettingsView: View {
                                 .compatibilityButtonStyle(.standard)
                             }
                             .padding(.vertical, 10)
+                            }
                         }
                     }
+
+                    if privateFeature.shouldShowEnrollment {
+                        privateFeature.enrollmentView()
+                    }
+
+                    if macroFeature.shouldShowEnrollment {
+                        macroFeature.enrollmentView()
+                    }
+
+                    inlineDiagnosticsSection
 
                     if model.isRC003VoiceExtensionTestEnabled {
                         Text("测试长时间语音功能")
@@ -3576,13 +3588,34 @@ struct SettingsView: View {
 
             Spacer(minLength: 16)
             StatusPill(text: state.title(using: localization), tint: state.tint)
-            if state != .granted {
-                Button(actionTitle, action: action)
-                    .compatibilityButtonStyle(.standard)
-                    .frame(width: 112)
-            }
+            Button(actionTitle, action: action)
+                .compatibilityButtonStyle(.standard)
+                .frame(width: 112)
         }
         .padding(.vertical, 12)
+    }
+
+    private func openSettingsURL(_ string: String) {
+        guard let url = URL(string: string) else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    private func copySettingsDiagnosticSummary() {
+        let summary = [
+            "SayAll settings diagnostics",
+            "app_version=\(currentVersion)",
+            "permission_bluetooth=\(bluetoothPermissionState == .granted)",
+            "permission_input_monitoring=\(inputMonitoringGranted)",
+            "permission_accessibility=\(accessibilityGranted)",
+            "runtime_log_available=\(FileManager.default.fileExists(atPath: AppLogger.shared.logURL.path))",
+        ].joined(separator: "\n")
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(summary, forType: .string)
+        AppLogger.shared.write(
+            "SETTINGS DIAGNOSTICS copied permission_bluetooth=\(bluetoothPermissionState == .granted) " +
+                "permission_input_monitoring=\(inputMonitoringGranted) " +
+                "permission_accessibility=\(accessibilityGranted)"
+        )
     }
 
     private var connectionBadge: String {
