@@ -2659,11 +2659,6 @@ struct SettingsView: View {
         VStack(alignment: .leading, spacing: 0) {
             Text("settings.permissions.title")
                 .font(.title3.weight(.semibold))
-            Text("settings.permissions.description")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .padding(.top, 3)
-                .padding(.bottom, 5)
 
             permissionRow(
                 symbol: "antenna.radiowaves.left.and.right",

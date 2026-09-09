@@ -468,7 +468,6 @@
 "settings.section.settings" = "设置";
 "settings.page.title" = "设置";
 "settings.permissions.title" = "权限与隐私";
-"settings.permissions.description" = "SayAll 需要以下系统权限才能正常工作。您的数据仅在本地处理，不会上传到任何服务器。";
 "settings.general.title" = "通用";
 "settings.general.launch_behavior" = "启动行为";
 "settings.general.launch_behavior_help" = "设置登录后自动启动和应用启动时是否打开主窗口。";
