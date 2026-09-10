@@ -1192,7 +1192,7 @@ struct SettingsPageRegressionTests {
         #expect(!captureSource.contains("API"))
     }
 
-    @Test func profileAndSidebarDoNotExposeSharingEntry() throws {
+    @Test func profileKeepsSharingEntryBelowTheMainSidebarSections() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -1204,8 +1204,10 @@ struct SettingsPageRegressionTests {
 
         #expect(source.contains("sharePanel(for: .about)"))
         #expect(!source.contains("sharePanel(for: .statistics)"))
-        #expect(!source.contains("Text(\"share.action\")"))
-        #expect(!source.contains("share.sidebar.accessibility_label"))
+        #expect(source.contains("Text(\"share.action\")"))
+        #expect(source.contains("share.sidebar.accessibility_label"))
+        #expect(source.contains("if visibleSections.contains(.statistics)"))
+        #expect(source.contains("sidebarButton(.statistics)"))
         #expect(source.contains("ShareCard(url: shareURL)"))
         #expect(!source.contains(".popover"))
     }
@@ -1247,5 +1249,7 @@ struct SettingsPageRegressionTests {
         #expect(source.contains("entries.prefix(10)"))
         #expect(source.contains("settings.voiceSessionRanking.prefix(10)"))
         #expect(source.contains(".frame(maxWidth: .infinity, alignment: .top)"))
+        #expect(source.contains(".frame(height: 250, alignment: .top)"))
+        #expect(source.contains("ForEach(0..<7, id: \\.self)"))
     }
 }

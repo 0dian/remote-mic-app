@@ -470,10 +470,31 @@ struct SettingsView: View {
             WindowDragArea()
                 .frame(height: 56)
                 .accessibilityHidden(true)
-            ForEach(visibleSections) { section in
+            ForEach(visibleSections.filter { $0 != .statistics }) { section in
                 sidebarButton(section)
             }
             Spacer(minLength: 0)
+            Button {
+                selectedSection = .about
+                expandedShareSection = .about
+            } label: {
+                VStack(spacing: 7) {
+                    Image(systemName: "square.and.arrow.up")
+                        .font(.system(size: 21, weight: .semibold))
+                    Text("share.action")
+                        .font(.system(size: 13, weight: .semibold))
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .compatibilityFocusEffectDisabled()
+            .foregroundStyle(Color.secondary)
+            .accessibilityLabel(Text("share.sidebar.accessibility_label"))
+            if visibleSections.contains(.statistics) {
+                sidebarButton(.statistics)
+            }
         }
         .background(Color(nsColor: .controlBackgroundColor))
     }
@@ -4273,7 +4294,10 @@ private struct StatisticsHeatmap: View {
                 .padding(.trailing, 6)
             }
         }
-        .frame(height: 230)
+        // Reserve enough vertical space for all seven weekday rows, including
+        // the largest square cells and the month-label gutter. Without this
+        // explicit height the GeometryReader can collapse and clip rows.
+        .frame(height: 250, alignment: .top)
     }
 
     private func fillColor(for day: StatisticsCalendarDay) -> Color {
