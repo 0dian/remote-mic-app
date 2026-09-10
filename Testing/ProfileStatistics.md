@@ -1,6 +1,6 @@
 # 个人中心统计页测试手册
 
-适用版本：`feature/profile-statistics`，基于 `origin/main` SHA `9945224cc9d411d21b6cc06a4eb378f8c9785270`。
+适用版本：`codex/profile-sidebar-layout`，基于 `origin/main` SHA `ca2cd7c6e53e64de539621ef03529f529855e238`。
 
 ## 测试前准备
 
@@ -13,10 +13,10 @@
 ### 个人中心布局
 
 1. 打开设置并进入侧边栏“个人中心”。
-2. 在默认窗口尺寸查看顶部四项 KPI、左侧排行榜和右侧使用日历；对照已批准设计稿 `dist/designs/profile-v4/profile-v4-dark-refined.png`，宽窗口的四项 KPI 必须保持单行。
+2. 在默认窗口尺寸查看顶部四项 KPI、左侧按键/动作排行榜和右侧使用日历；语音时长排行榜应位于使用日历下方。对照已批准设计稿 `Testing/artifacts/profile-statistics/pr-dark-design/statistics-1606x979.png`，宽窗口的四项 KPI 必须保持单行。
 3. 将窗口调整为 `800 × 650`，重复查看。
 
-预期：页面标题显示“个人中心”；宽窗口四项 KPI 单行排列，窄窗口可自适应为两列且不被截断；排行榜和日历并列；日历只展示最近半年，并在面板内尽可能放大方格，方格宽高相等、颜色为 Codex 风格蓝色；空间不足时可横向滚动查看完整半年日历且方格不会被压缩；月份 / 星期标签不重叠；浅色和深色均有足够对比度；不出现“少—多”图例。
+预期：页面标题显示“个人中心”；个人中心位于侧边栏最后，侧边栏没有分享入口；个人中心不显示分享卡；宽窗口四项 KPI 单行排列，窄窗口可自适应为两列且不被截断；左侧显示按键/动作排行榜，右侧依次显示使用日历和单次语音时长排行榜；三个排行榜各最多显示 10 条；日历只展示最近半年，并在面板内尽可能放大方格，方格宽高相等、颜色为 Codex 风格蓝色；空间不足时可横向滚动查看完整半年日历且方格不会被压缩；月份 / 星期标签不重叠；浅色和深色均有足够对比度；不出现“少—多”图例。
 
 失败判定：出现横向裁切、方格变成长方形、中文小于 12pt、排行榜或日历无法滚动查看，或出现其他页面内容。
 
@@ -47,9 +47,9 @@
 
 ## 验证命令与边界
 
-- 自动化：`swift test --disable-sandbox`。
-- 页面回归：`swift test --disable-sandbox --filter SettingsPageRegressionTests`。
-- 截图：使用 `SettingsScreenshotRenderer` 生成 `1020×772`、`800×650` 的浅色 / 深色中文截图，并与 `dist/designs/profile-v4/profile-v4-dark-refined.png` 对比。
+- 自动化：`swift test --disable-keychain --disable-sandbox`。
+- 页面回归：`swift test --disable-keychain --disable-sandbox --filter SettingsPageRegressionTests`。
+- 截图：使用 `SettingsScreenshotRenderer` 生成 `1606×979`、`1020×772`、`800×650` 的浅色 / 深色中文截图，输出到 `Testing/artifacts/profile-statistics/pr-layout-*`，并使用 `Testing/artifacts/profile-statistics/pr-layout-comparison/profile-dark-reference-vs-implementation.png` 与已批准设计稿对比。
 - 代理截图验证不能替代真实遥控器、蓝牙、目标 App 前台切换和真实语音输入；这些仍需在实际 macOS 环境人工验收。
 
 ## 日志收集

@@ -989,11 +989,11 @@ struct SettingsPageRegressionTests {
             ".macros",
             ".buttonProfiles",
             ".membership",
-            ".statistics",
             ".transcripts",
             ".connection",
             ".permissions",
             ".about",
+            ".statistics",
         ] {
             let range = try #require(orderSource.range(
                 of: section,
@@ -1192,7 +1192,7 @@ struct SettingsPageRegressionTests {
         #expect(!captureSource.contains("API"))
     }
 
-    @Test func sharingUsesOneInlinePanelAcrossAboutStatisticsAndSidebar() throws {
+    @Test func profileAndSidebarDoNotExposeSharingEntry() throws {
         let root = URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -1203,9 +1203,9 @@ struct SettingsPageRegressionTests {
         )
 
         #expect(source.contains("sharePanel(for: .about)"))
-        #expect(source.contains("sharePanel(for: .statistics)"))
-        #expect(source.contains("selectedSection = .about"))
-        #expect(source.contains("expandedShareSection = .about"))
+        #expect(!source.contains("sharePanel(for: .statistics)"))
+        #expect(!source.contains("Text(\"share.action\")"))
+        #expect(!source.contains("share.sidebar.accessibility_label"))
         #expect(source.contains("ShareCard(url: shareURL)"))
         #expect(!source.contains(".popover"))
     }
@@ -1242,6 +1242,10 @@ struct SettingsPageRegressionTests {
         #expect(source.contains("dailyUsageStatistics(days: 26 * 7, calendar: calendar)"))
         #expect(source.contains("let rankingWidth = max(360, availableWidth * 0.42)"))
         #expect(source.contains(".frame(width: rankingWidth, alignment: .top)"))
-        #expect(source.contains(".frame(maxWidth: .infinity, minHeight: 648, alignment: .top)"))
+        #expect(source.contains("statisticsVoiceSessionRankingPanel"))
+        #expect(source.contains("statisticsCalendarPanel\n                                statisticsVoiceSessionRankingPanel"))
+        #expect(source.contains("entries.prefix(10)"))
+        #expect(source.contains("settings.voiceSessionRanking.prefix(10)"))
+        #expect(source.contains(".frame(maxWidth: .infinity, alignment: .top)"))
     }
 }
