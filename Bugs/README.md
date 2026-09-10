@@ -186,6 +186,7 @@
 | 2026-08-21 | [设置页只展示已连接遥控器](./2026-08-21-settings-connected-remotes-only.md) | 已修复，自动化与构建通过；等待真实双遥控器和首次配对验收 |
 | 2026-08-20 | [重新授权后 HID 监听未恢复](./2026-08-20-hid-permission-recovery.md) | 候选修复完成，等待真实权限与遥控器验收 |
 | 2026-08-28 | [回眸记录过多时重复、空白、卡顿及应用记录不可见](./2026-08-28-transcript-history-list-identity-and-window.md) | 候选修复完成，等待大规模归档与微信真机 UI 验收 |
+| 2026-09-10 | [Siri Remote 触摸指示器缺失与移动/滚动边界不清](./2026-09-10-siri-remote-touch-feedback-and-mode-boundary.md) | 候选修复及自动化完成，等待签名包真机视觉与体感验收 |
 
 ## 记录模板
 
