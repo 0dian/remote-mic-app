@@ -1475,7 +1475,7 @@ struct OnboardingFlowTests {
             contentsOf: root.appendingPathComponent("Sources/RemoteMic/RemoteMicRootView.swift"),
             encoding: .utf8
         )
-        #expect(appSource.contains("showSettingsWindow(initialSection: .permissions)"))
+        #expect(appSource.contains("showSettingsWindow(initialSection: .about)"))
         #expect(appSource.contains("UPDATE PERMISSION_REPAIR"))
         #expect(rootViewSource.contains("initialSection: initialSettingsSection"))
     }

@@ -256,7 +256,7 @@ private final class RemoteMicAppDelegate: NSObject, NSApplicationDelegate, NSMen
             DispatchQueue.main.async { [weak self] in
                 guard let self else { return }
                 if shouldOpenPermissionRepair {
-                    self.showSettingsWindow(initialSection: .permissions)
+                    self.showSettingsWindow(initialSection: .about)
                 } else {
                     self.showSettings()
                 }
