@@ -108,7 +108,11 @@ case "$MODE" in
     /usr/bin/grep -Fq 'SiriRemoteComponent.pkg</pkg-ref>' "$DISTRIBUTION"
     /usr/bin/grep -Fq '<options customize="always"' "$DISTRIBUTION"
     /usr/bin/grep -Fq 'id="siri-remote"' "$DISTRIBUTION"
-    /usr/bin/grep -Fq 'start_selected="false"' "$DISTRIBUTION"
+    /usr/bin/grep -Fq 'function siriRemoteSupportWasPreviouslyInstalled()' "$DISTRIBUTION"
+    /usr/bin/grep -Fq 'com.hd838a.RemoteMic.siri-remote.plist' "$DISTRIBUTION"
+    /usr/bin/grep -Fq 'com.hd838a.RemoteMic.siri-remote.bom' "$DISTRIBUTION"
+    /usr/bin/grep -Fq '/Library/PrivilegedHelperTools/com.hd838a.SayAll.AppleRemoteHCIService' "$DISTRIBUTION"
+    /usr/bin/grep -Fq 'start_selected="siriRemoteSupportWasPreviouslyInstalled()"' "$DISTRIBUTION"
     case "$RELEASE_VARIANT" in
       apple-silicon)
         WRONG_ARCHITECTURE_KEY="wrong_architecture_apple_silicon"
@@ -147,6 +151,16 @@ case "$MODE" in
       /usr/sbin/installer -showChoicesXML -pkg "$PACKAGE" -target / \
         > "$INSTALLER_CHOICES" 2> "$INSTALLER_ERROR"
       /usr/bin/grep -Fq '<string>remote-mic</string>' "$INSTALLER_CHOICES"
+      EXPECTED_SIRI_REMOTE_SELECTION=0
+      if /usr/sbin/pkgutil --pkg-info com.hd838a.RemoteMic.siri-remote >/dev/null 2>&1 || \
+         [[ -e /Library/PrivilegedHelperTools/com.hd838a.SayAll.AppleRemoteHCIService ]] || \
+         [[ -e /Library/LaunchDaemons/com.hd838a.SayAll.AppleRemoteHCIService.plist ]]; then
+        EXPECTED_SIRI_REMOTE_SELECTION=1
+      fi
+      test "$(/usr/bin/plutil -extract 0.childItems.1.choiceIdentifier raw -o - \
+        "$INSTALLER_CHOICES")" = "siri-remote"
+      test "$(/usr/bin/plutil -extract 0.childItems.1.choiceIsSelected raw -o - \
+        "$INSTALLER_CHOICES")" = "$EXPECTED_SIRI_REMOTE_SELECTION"
     else
       if /usr/sbin/installer -showChoicesXML -pkg "$PACKAGE" -target / \
           > "$INSTALLER_CHOICES" 2> "$INSTALLER_ERROR"; then

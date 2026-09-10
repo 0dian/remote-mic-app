@@ -373,6 +373,8 @@
   - 2026-09-07：修复 A2854/RC003 页面回归：连接页按型号显示对应缩略图并保持统一外框，映射页切换设备时回到顶部，Siri 卡片首行与 RC003 对齐；Siri Remote AppSwitcher 改用持住 Command 的生命周期会话，TV 继续 Tab、左右 Cmd+导航、中心确认、返回取消，超时/断连释放修饰键。公开宿主、私有 UI-only 宿主和私有包完整 Swift 测试通过；真实 A2854 系统 AppSwitcher 与窗口视觉仍待实机验收。
   - 2026-09-08：修复本地 Siri Remote 打包校验误把嵌套 Helper 的 macOS 13 下限判定为 Apple Silicon macOS 14 不兼容；主 App 与通用 Helper 仍严格匹配发布下限，Siri Remote 音频/HCI Helper 和 Opus 仅拒绝高于发布下限的组件。真实 A2854 语音、触摸和安装器验收仍待现场完成。
   - 2026-09-08：修复点击 Siri Remote 页面时因 SwiftPM `Bundle.module` 构建机回退路径失效而触发 `fatalError` 的崩溃；私有包统一优先解析宿主 `.app/Contents/Resources`，公开宿主构建增加资源解析器门禁。真实签名包页面点击仍需重新验收。
+  - 2026-09-09：修复 Siri Remote 语音键被自定义映射开关拦截，以及音频 helper 尚未就绪时立即释放 Fn、无法唤醒输入法的问题；语音会话现在保持按下并做有限退避重试，正常松键继续无损排空尾音。私有 Siri Remote 指针与环形滚动增益同步提高。自动化与分发资产验证通过后仍需真实 A2854 和目标输入法验收。
+  - 2026-09-09：增加 A2540 候选运行时与 `0x0314/0x0315` 双型号 HID/语音匹配，A2540 复用 A2854 图片和布局；触摸桥改为按 IOKit Product ID 严格绑定 Siri Remote，拒绝 Magic Mouse `0x0269`。安装器在既有 receipt/Helper/LaunchDaemon 存在时自动勾选 Siri Remote 可选组件。A2540 完整按键、触摸、语音与 Magic Mouse 共存真机矩阵完成前保持 `awaitingRealHardware`。
   - 2026-09-09：修复当前 macOS 将 `com.apple.PacketLogger.HCI` 授权规则物化为 `session-owner=false` 时被误判为弱规则，私有包 47 项测试通过；增加 A2854 电量的公开 IORegistry 兼容读取路径，当前机器未发现遥控器 `BatteryPercent`，因此仍按合同显示未知。公开宿主清理 SwiftPM 缓存后 460 项测试通过，Siri Remote + 组合动作/键位方案集成 App 构建并通过 `verify-app.sh`；真实 A2854 语音 PCM/最终文字和电量仍需正式签名包实机验收。
 - [x] 支持 Xiaomi Bluetooth Remote Control 2（RC001-MS）
   - 真机确认 RC001-MS 与 RC003-MS 使用相同的固件 `2671`、VID/PID `0x2717 / 0x32B8`、GATT Service、ATVV v1.0、16kHz IMA-ADPCM 和 120-byte frame；两款设备均已完成真实普通按键和 `STREAM_START → AUDIO → STREAM_STOP` 语音链路。

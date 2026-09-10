@@ -532,6 +532,8 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     private var appleRemoteVoiceDevices = Set<SiriRemoteDeviceIdentity>()
     private var appleRemoteVoiceStopping = false
     private var appleRemoteVoiceStopOperation: UInt64 = 0
+    private var appleRemoteVoiceCaptureRetryAttempt = 0
+    private var appleRemoteVoiceCaptureRetryWorkItem: DispatchWorkItem?
     private var appleRemoteAudioBatchCount = 0
     private var appleRemoteAudioSampleCount = 0
     private var appleRemoteAudioEnqueueFailureCount = 0
@@ -915,6 +917,8 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         bluetoothBridges.values.forEach { $0.stop() }
         discoveryBluetoothBridge?.stop()
 #if SAYALL_SIRI_REMOTE_ENABLED
+        appleRemoteVoiceCaptureRetryWorkItem?.cancel()
+        appleRemoteVoiceCaptureRetryWorkItem = nil
         siriRemoteFeature.stop()
         resetAllAppleRemoteState(reason: "app_stop")
 #endif
@@ -2525,6 +2529,34 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             )
             return
         }
+        if control == .siri {
+            guard let profileID = appleRemoteProfileIDs[event.device] else {
+                AppLogger.shared.write(
+                    "APPLE REMOTE VOICE phase=failed result=profile_unavailable"
+                )
+                return
+            }
+            if event.phase == .began {
+                selectRemoteProfile(profileID)
+            }
+            var activeControlIDs = appleRemoteActiveControlIDs[event.device, default: []]
+            if event.phase == .began {
+                activeControlIDs.insert(control.rawValue)
+            } else {
+                activeControlIDs.remove(control.rawValue)
+            }
+            appleRemoteActiveControlIDs[event.device] = activeControlIDs
+            refreshAppleRemoteActiveControlIDs()
+            switch event.phase {
+            case .began:
+                beginAppleRemoteVoice(for: event.device)
+            case .ended:
+                endAppleRemoteVoice(for: event.device, reason: "released")
+            case .cancelled:
+                break
+            }
+            return
+        }
         guard settings.customMappingEnabled else {
             if event.phase == .began {
                 AppLogger.shared.write(
@@ -2552,17 +2584,6 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         }
         appleRemoteActiveControlIDs[event.device] = activeControlIDs
         refreshAppleRemoteActiveControlIDs()
-        if control == .siri {
-            switch event.phase {
-            case .began:
-                beginAppleRemoteVoice(for: event.device)
-            case .ended:
-                endAppleRemoteVoice(for: event.device, reason: "released")
-            case .cancelled:
-                break
-            }
-            return
-        }
         guard let button = control.remoteButton else {
             if event.phase == .began {
                 AppLogger.shared.write(
@@ -3051,6 +3072,9 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
 
     private func beginAppleRemoteVoice(for device: SiriRemoteDeviceIdentity) {
         guard appleRemoteVoiceDevices.insert(device).inserted else { return }
+        appleRemoteVoiceCaptureRetryWorkItem?.cancel()
+        appleRemoteVoiceCaptureRetryWorkItem = nil
+        appleRemoteVoiceCaptureRetryAttempt = 0
         siriRemoteFeature.setVoiceTouchSuppressed(true)
         if appleRemoteVoiceStopping {
             if siriRemoteFeature.resumeCaptureIfStopping() {
@@ -3112,16 +3136,18 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             )
             return
         }
+        beginVoiceSessionIfNeeded()
         guard siriRemoteFeature.beginCapture() else {
-            appleRemoteVoiceDevices.remove(device)
-            siriRemoteFeature.setVoiceTouchSuppressed(false)
-            _ = releaseVoiceKeyIfNeeded(owner: .appleRemote, forceSoftware: true)
             AppLogger.shared.write(
-                "APPLE REMOTE VOICE phase=failed result=audio_capture_not_started"
+                "APPLE REMOTE VOICE phase=pending result=audio_capture_not_ready " +
+                    "retry_attempt=\(appleRemoteVoiceCaptureRetryAttempt)"
+            )
+            scheduleAppleRemoteVoiceCaptureRetry(for: device)
+            AppLogger.shared.write(
+                "APPLE REMOTE VOICE phase=held result=input_method_wake_preserved"
             )
             return
         }
-        beginVoiceSessionIfNeeded()
         AppLogger.shared.write(
             "APPLE REMOTE VOICE phase=started result=triggered audio_capture=requested " +
                 "audio_source=apple_remote_microphone route=MiRemoteV_2ch"
@@ -3133,6 +3159,8 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         reason: String
     ) {
         guard appleRemoteVoiceDevices.remove(device) != nil else { return }
+        appleRemoteVoiceCaptureRetryWorkItem?.cancel()
+        appleRemoteVoiceCaptureRetryWorkItem = nil
         if appleRemoteVoiceStopping {
             AppLogger.shared.write(
                 "APPLE REMOTE VOICE phase=completed result=deferred_session_cancelled " +
@@ -3169,6 +3197,44 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
                 )
             }
         }
+    }
+
+    private func scheduleAppleRemoteVoiceCaptureRetry(
+        for device: SiriRemoteDeviceIdentity
+    ) {
+        guard appleRemoteVoiceCaptureRetryWorkItem == nil else { return }
+        let delays: [TimeInterval] = [0.1, 0.25, 0.5, 1.0, 2.0]
+        guard appleRemoteVoiceCaptureRetryAttempt < delays.count else {
+            AppLogger.shared.write(
+                "APPLE REMOTE VOICE phase=failed result=audio_capture_retry_exhausted " +
+                    "attempts=\(appleRemoteVoiceCaptureRetryAttempt)"
+            )
+            return
+        }
+        let attempt = appleRemoteVoiceCaptureRetryAttempt
+        appleRemoteVoiceCaptureRetryAttempt += 1
+        let workItem = DispatchWorkItem { [weak self] in
+            guard let self else { return }
+            self.appleRemoteVoiceCaptureRetryWorkItem = nil
+            guard self.appleRemoteVoiceDevices.contains(device),
+                  !self.appleRemoteVoiceStopping
+            else { return }
+            if self.siriRemoteFeature.beginCapture() {
+                AppLogger.shared.write(
+                    "APPLE REMOTE VOICE phase=started result=retry_succeeded " +
+                        "retry_attempt=\(attempt + 1) audio_source=apple_remote_microphone " +
+                        "route=MiRemoteV_2ch"
+                )
+                return
+            }
+            AppLogger.shared.write(
+                "APPLE REMOTE VOICE phase=pending result=retry_not_ready " +
+                    "retry_attempt=\(attempt + 1)"
+            )
+            self.scheduleAppleRemoteVoiceCaptureRetry(for: device)
+        }
+        appleRemoteVoiceCaptureRetryWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + delays[attempt], execute: workItem)
     }
 
     private func completeAppleRemoteVoiceStop(
