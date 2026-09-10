@@ -34,20 +34,88 @@ struct SettingsPageRegressionTests {
         #expect(RemoteButton.allCases.contains(.mute))
     }
 
-    @Test func settingsKeepsPermissionRecoveryActionsVisibleAfterGranting() throws {
-        let root = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-            .deletingLastPathComponent()
-        let source = try String(
-            contentsOf: root.appendingPathComponent("Sources/RemoteMic/SettingsView.swift"),
-            encoding: .utf8
+    @Test func permissionRecoveryRequestsMissingPermissionsAndOpensExactSystemSettings() {
+        #expect(SettingsPageBehavior.permissionAction(for: .inputMonitoring, isGranted: false) == .request)
+        #expect(SettingsPageBehavior.permissionAction(for: .accessibility, isGranted: false) == .request)
+        #expect(SettingsPageBehavior.permissionAction(for: .bluetooth, isGranted: false) == .openSystemSettings(
+            "x-apple.systempreferences:com.apple.BluetoothSettings"
+        ))
+        #expect(SettingsPageBehavior.permissionAction(for: .inputMonitoring, isGranted: true) == .openSystemSettings(
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
+        ))
+        #expect(SettingsPageBehavior.permissionAction(for: .accessibility, isGranted: true) == .openSystemSettings(
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+        ))
+
+        var requestCount = 0
+        var openedURLs: [String] = []
+        SettingsPageBehavior.perform(
+            .request,
+            requestPermission: { requestCount += 1 },
+            openSystemSettings: { openedURLs.append($0) }
+        )
+        SettingsPageBehavior.perform(
+            SettingsPageBehavior.permissionAction(for: .accessibility, isGranted: true),
+            requestPermission: { requestCount += 1 },
+            openSystemSettings: { openedURLs.append($0) }
         )
 
-        #expect(source.contains("Button(actionTitle, action: action)"))
-        #expect(source.contains("permission.action.open_settings"))
-        #expect(source.contains("settings.isOnboardingComplete"))
-        #expect(source.contains("permissions.upgrade_identity_help"))
+        #expect(requestCount == 1)
+        #expect(openedURLs == [
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+        ])
+        #expect(SettingsPermissionAction.request.titleKey == "permission.action.request")
+        #expect(SettingsPageBehavior.permissionAction(
+            for: .inputMonitoring,
+            isGranted: true
+        ).titleKey == "permission.action.open_settings")
+    }
+
+    @Test func diagnosticSummaryCopiesOnlyDeterministicSanitizedStatus() {
+        let snapshot = SettingsDiagnosticSnapshot(
+            appVersion: "1.9.22 (183)",
+            bluetoothGranted: true,
+            inputMonitoringGranted: false,
+            accessibilityGranted: true,
+            runtimeLogAvailable: true
+        )
+        var pastedValues: [String] = []
+        var auditLogs: [String] = []
+
+        SettingsPageBehavior.copyDiagnosticSummary(
+            snapshot,
+            writeToPasteboard: { pastedValues.append($0) },
+            writeAuditLog: { auditLogs.append($0) }
+        )
+
+        #expect(pastedValues == [[
+            "SayAll settings diagnostics",
+            "app_version=1.9.22 (183)",
+            "permission_bluetooth=true",
+            "permission_input_monitoring=false",
+            "permission_accessibility=true",
+            "runtime_log_available=true",
+        ].joined(separator: "\n")])
+        #expect(auditLogs == [
+            "SETTINGS DIAGNOSTICS copied permission_bluetooth=true " +
+                "permission_input_monitoring=false permission_accessibility=true",
+        ])
+
+        let copiedText = pastedValues[0].lowercased()
+        for forbiddenField in ["/users/", "device_id", "transcript", "audio_content", "app_path"] {
+            #expect(!copiedText.contains(forbiddenField))
+        }
+    }
+
+    @Test func legacyPermissionAndShareNavigationResolveToTheConsolidatedSettingsPage() {
+        #expect(SettingsPageBehavior.visibleSection(for: .permissions) == .about)
+        for section in SettingsSection.allCases where section != .permissions {
+            #expect(SettingsPageBehavior.visibleSection(for: section) == section)
+        }
+        #expect(SettingsPageBehavior.shareNavigationState == SettingsNavigationState(
+            selectedSection: .about,
+            expandedShareSection: .about
+        ))
     }
 
     @Test func settingsRouteIsTheConsolidatedSettingsPage() throws {
@@ -61,7 +129,10 @@ struct SettingsPageRegressionTests {
         )
 
         #expect(source.contains("case .about: return \"settings.section.settings\""))
-        #expect(source.contains("case .permissions:\n            // Keep the legacy route"))
+        #expect(source.contains("switch SettingsPageBehavior.visibleSection(for: selectedSection)"))
+        #expect(source.contains("let navigation = SettingsPageBehavior.shareNavigationState"))
+        #expect(source.contains("performPermissionAction(inputMonitoringAction)"))
+        #expect(source.contains("SettingsPageBehavior.copyDiagnosticSummary("))
         #expect(source.contains("Text(\"settings.permissions.title\")"))
         #expect(source.contains("Text(\"settings.general.title\")"))
         #expect(source.contains("Button(\"about.configuration.export\", action: exportConfiguration)"))
@@ -1226,8 +1297,9 @@ struct SettingsPageRegressionTests {
 
         #expect(source.contains("sharePanel(for: .about)"))
         #expect(source.contains("sharePanel(for: .statistics)"))
-        #expect(source.contains("selectedSection = .about"))
-        #expect(source.contains("expandedShareSection = .about"))
+        #expect(source.contains("let navigation = SettingsPageBehavior.shareNavigationState"))
+        #expect(source.contains("selectedSection = navigation.selectedSection"))
+        #expect(source.contains("expandedShareSection = navigation.expandedShareSection"))
         #expect(source.contains("ShareCard(url: shareURL)"))
         #expect(!source.contains(".popover"))
 

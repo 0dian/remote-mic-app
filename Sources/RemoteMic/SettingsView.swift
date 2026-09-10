@@ -55,6 +55,111 @@ enum SettingsSection: String, CaseIterable, Identifiable {
     }
 }
 
+enum SettingsPermissionKind {
+    case bluetooth
+    case inputMonitoring
+    case accessibility
+}
+
+enum SettingsPermissionAction: Equatable {
+    case request
+    case openSystemSettings(String)
+
+    var titleKey: String {
+        switch self {
+        case .request:
+            "permission.action.request"
+        case .openSystemSettings:
+            "permission.action.open_settings"
+        }
+    }
+}
+
+struct SettingsNavigationState: Equatable {
+    let selectedSection: SettingsSection
+    let expandedShareSection: SettingsSection?
+}
+
+struct SettingsDiagnosticSnapshot: Equatable {
+    let appVersion: String
+    let bluetoothGranted: Bool
+    let inputMonitoringGranted: Bool
+    let accessibilityGranted: Bool
+    let runtimeLogAvailable: Bool
+
+    var summary: String {
+        [
+            "SayAll settings diagnostics",
+            "app_version=\(appVersion)",
+            "permission_bluetooth=\(bluetoothGranted)",
+            "permission_input_monitoring=\(inputMonitoringGranted)",
+            "permission_accessibility=\(accessibilityGranted)",
+            "runtime_log_available=\(runtimeLogAvailable)",
+        ].joined(separator: "\n")
+    }
+
+    var auditLog: String {
+        "SETTINGS DIAGNOSTICS copied permission_bluetooth=\(bluetoothGranted) " +
+            "permission_input_monitoring=\(inputMonitoringGranted) " +
+            "permission_accessibility=\(accessibilityGranted)"
+    }
+}
+
+enum SettingsPageBehavior {
+    static func visibleSection(for requestedSection: SettingsSection) -> SettingsSection {
+        requestedSection == .permissions ? .about : requestedSection
+    }
+
+    static let shareNavigationState = SettingsNavigationState(
+        selectedSection: .about,
+        expandedShareSection: .about
+    )
+
+    static func permissionAction(
+        for permission: SettingsPermissionKind,
+        isGranted: Bool
+    ) -> SettingsPermissionAction {
+        switch permission {
+        case .bluetooth:
+            .openSystemSettings("x-apple.systempreferences:com.apple.BluetoothSettings")
+        case .inputMonitoring:
+            isGranted
+                ? .openSystemSettings(
+                    "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
+                )
+                : .request
+        case .accessibility:
+            isGranted
+                ? .openSystemSettings(
+                    "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
+                )
+                : .request
+        }
+    }
+
+    static func perform(
+        _ action: SettingsPermissionAction,
+        requestPermission: () -> Void,
+        openSystemSettings: (String) -> Void
+    ) {
+        switch action {
+        case .request:
+            requestPermission()
+        case let .openSystemSettings(url):
+            openSystemSettings(url)
+        }
+    }
+
+    static func copyDiagnosticSummary(
+        _ snapshot: SettingsDiagnosticSnapshot,
+        writeToPasteboard: (String) -> Void,
+        writeAuditLog: (String) -> Void
+    ) {
+        writeToPasteboard(snapshot.summary)
+        writeAuditLog(snapshot.auditLog)
+    }
+}
+
 extension BridgeAppModel: WebRemoteSessionModel {}
 
 private enum PermissionVisualState {
@@ -474,8 +579,9 @@ struct SettingsView: View {
             }
             Spacer(minLength: 0)
             Button {
-                selectedSection = .about
-                expandedShareSection = .about
+                let navigation = SettingsPageBehavior.shareNavigationState
+                selectedSection = navigation.selectedSection
+                expandedShareSection = navigation.expandedShareSection
             } label: {
                 VStack(spacing: 7) {
                     Image(systemName: "square.and.arrow.up")
@@ -537,7 +643,7 @@ struct SettingsView: View {
 
     @ViewBuilder
     private var selectedPage: some View {
-        switch selectedSection {
+        switch SettingsPageBehavior.visibleSection(for: selectedSection) {
         case .connection:
             connectionPage
         case .privateFeature:
@@ -605,8 +711,6 @@ struct SettingsView: View {
         case .transcripts:
             transcriptHistoryPage
         case .permissions:
-            // Keep the legacy route for onboarding and update-repair callers,
-            // but render the consolidated settings destination.
             aboutPage
         case .about:
             aboutPage
@@ -2656,7 +2760,20 @@ struct SettingsView: View {
     }
 
     private var inlinePermissionsSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
+        let bluetoothAction = SettingsPageBehavior.permissionAction(
+            for: .bluetooth,
+            isGranted: bluetoothPermissionState == .granted
+        )
+        let inputMonitoringAction = SettingsPageBehavior.permissionAction(
+            for: .inputMonitoring,
+            isGranted: inputMonitoringGranted
+        )
+        let accessibilityAction = SettingsPageBehavior.permissionAction(
+            for: .accessibility,
+            isGranted: accessibilityGranted
+        )
+
+        return VStack(alignment: .leading, spacing: 0) {
             Text("settings.permissions.title")
                 .font(.title3.weight(.semibold))
 
@@ -2667,7 +2784,7 @@ struct SettingsView: View {
                 state: bluetoothPermissionState,
                 actionTitle: localization.text("permission.bluetooth.open_settings")
             ) {
-                openSettingsURL("x-apple.systempreferences:com.apple.BluetoothSettings")
+                performPermissionAction(bluetoothAction) {}
             }
 
             Divider().padding(.leading, 48)
@@ -2677,17 +2794,9 @@ struct SettingsView: View {
                 title: localization.text("permission.input_monitoring.title"),
                 detail: localization.text("permission.input_monitoring.description"),
                 state: inputMonitoringGranted ? .granted : .pending,
-                actionTitle: localization.text(
-                    inputMonitoringGranted
-                        ? "permission.action.open_settings"
-                        : "permission.action.request"
-                )
+                actionTitle: localization.text(inputMonitoringAction.titleKey)
             ) {
-                if inputMonitoringGranted {
-                    openSettingsURL(
-                        "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent"
-                    )
-                } else {
+                performPermissionAction(inputMonitoringAction) {
                     model.requestInputMonitoringPermission()
                 }
             }
@@ -2699,17 +2808,9 @@ struct SettingsView: View {
                 title: localization.text("permission.accessibility.title"),
                 detail: localization.text("permission.accessibility.description"),
                 state: accessibilityGranted ? .granted : .pending,
-                actionTitle: localization.text(
-                    accessibilityGranted
-                        ? "permission.action.open_settings"
-                        : "permission.action.request"
-                )
+                actionTitle: localization.text(accessibilityAction.titleKey)
             ) {
-                if accessibilityGranted {
-                    openSettingsURL(
-                        "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility"
-                    )
-                } else {
+                performPermissionAction(accessibilityAction) {
                     model.requestAccessibilityPermission()
                 }
             }
@@ -3593,21 +3694,32 @@ struct SettingsView: View {
         NSWorkspace.shared.open(url)
     }
 
+    private func performPermissionAction(
+        _ action: SettingsPermissionAction,
+        requestPermission: () -> Void
+    ) {
+        SettingsPageBehavior.perform(
+            action,
+            requestPermission: requestPermission,
+            openSystemSettings: openSettingsURL
+        )
+    }
+
     private func copySettingsDiagnosticSummary() {
-        let summary = [
-            "SayAll settings diagnostics",
-            "app_version=\(currentVersion)",
-            "permission_bluetooth=\(bluetoothPermissionState == .granted)",
-            "permission_input_monitoring=\(inputMonitoringGranted)",
-            "permission_accessibility=\(accessibilityGranted)",
-            "runtime_log_available=\(FileManager.default.fileExists(atPath: AppLogger.shared.logURL.path))",
-        ].joined(separator: "\n")
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(summary, forType: .string)
-        AppLogger.shared.write(
-            "SETTINGS DIAGNOSTICS copied permission_bluetooth=\(bluetoothPermissionState == .granted) " +
-                "permission_input_monitoring=\(inputMonitoringGranted) " +
-                "permission_accessibility=\(accessibilityGranted)"
+        let snapshot = SettingsDiagnosticSnapshot(
+            appVersion: currentVersion,
+            bluetoothGranted: bluetoothPermissionState == .granted,
+            inputMonitoringGranted: inputMonitoringGranted,
+            accessibilityGranted: accessibilityGranted,
+            runtimeLogAvailable: FileManager.default.fileExists(atPath: AppLogger.shared.logURL.path)
+        )
+        SettingsPageBehavior.copyDiagnosticSummary(
+            snapshot,
+            writeToPasteboard: { summary in
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(summary, forType: .string)
+            },
+            writeAuditLog: AppLogger.shared.write
         )
     }
 
