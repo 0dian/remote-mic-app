@@ -191,11 +191,11 @@ struct SettingsView: View {
         .macros,
         .buttonProfiles,
         .membership,
-        .statistics,
         .transcripts,
         .connection,
         .privateFeature,
         .about,
+        .statistics,
     ]
 
     @State private var selectedSection: SettingsSection
@@ -469,7 +469,7 @@ struct SettingsView: View {
             WindowDragArea()
                 .frame(height: 56)
                 .accessibilityHidden(true)
-            ForEach(visibleSections) { section in
+            ForEach(visibleSections.filter { $0 != .statistics }) { section in
                 sidebarButton(section)
             }
             Spacer(minLength: 0)
@@ -491,6 +491,9 @@ struct SettingsView: View {
             .compatibilityFocusEffectDisabled()
             .foregroundStyle(Color.secondary)
             .accessibilityLabel(Text("share.sidebar.accessibility_label"))
+            if visibleSections.contains(.statistics) {
+                sidebarButton(.statistics)
+            }
         }
         .background(Color(nsColor: .controlBackgroundColor))
     }
@@ -2362,12 +2365,14 @@ struct SettingsView: View {
                         HStack(alignment: .top, spacing: 14) {
                             statisticsRankingPanel
                                 .frame(width: rankingWidth, alignment: .top)
-                            statisticsCalendarPanel
+                            VStack(spacing: 14) {
+                                statisticsCalendarPanel
+                                statisticsVoiceSessionRankingPanel
+                            }
                                 .frame(width: max(0, availableWidth - rankingWidth), alignment: .top)
                         }
                     }
                     .frame(minHeight: 648)
-                    sharePanel(for: .statistics)
                 }
             }
         }
@@ -2468,70 +2473,6 @@ struct SettingsView: View {
                     }
                 }
 
-                VStack(alignment: .leading, spacing: 7) {
-                    Label(
-                        localization.text("statistics.ranking.voice_sessions"),
-                        systemImage: "waveform"
-                    )
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(.orange)
-
-                    if settings.voiceSessionRanking.isEmpty {
-                        Text("statistics.voice_ranking.empty")
-                            .font(.system(size: 12))
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(Array(settings.voiceSessionRanking.prefix(10).enumerated()), id: \.element.id) {
-                            index, record in
-                            Button {
-                                selectedSection = .transcripts
-                            } label: {
-                                HStack(spacing: 7) {
-                                    Text("\(index + 1)")
-                                        .foregroundStyle(.orange)
-                                        .frame(width: 18, alignment: .leading)
-                                    Text(chartDurationText(
-                                        seconds: UsageStatisticsPresentation.wholeSeconds(record.duration)
-                                    ))
-                                    .monospacedDigit()
-                                    Text("·").foregroundStyle(.secondary)
-                                    Text(record.applicationName ?? localization.text(
-                                        "statistics.ranking.unknown_app"
-                                    )).lineLimit(1)
-                                    Spacer(minLength: 3)
-                                    Text(voiceSessionDateText(record.endedAt))
-                                        .font(.system(size: 11))
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(1)
-                                    Image(systemName: "chevron.right")
-                                        .font(.caption2.weight(.semibold))
-                                        .foregroundStyle(.secondary)
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .contentShape(Rectangle())
-                            }
-                            .buttonStyle(.plain)
-                            .padding(.vertical, 5)
-                            if index < min(settings.voiceSessionRanking.count, 10) - 1 {
-                                Divider()
-                            }
-                        }
-                    }
-
-                    Button {
-                        selectedSection = .transcripts
-                    } label: {
-                        HStack(spacing: 4) {
-                            Spacer()
-                            Text("statistics.ranking.view_all")
-                            Image(systemName: "chevron.right")
-                        }
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Color.accentColor)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, 2)
-                }
             }
         }
     }
@@ -2550,7 +2491,7 @@ struct SettingsView: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
             } else {
-                ForEach(Array(entries.prefix(5).enumerated()), id: \.element.id) { index, entry in
+                ForEach(Array(entries.prefix(10).enumerated()), id: \.element.id) { index, entry in
                     HStack(spacing: 7) {
                         Text("\(index + 1)")
                             .font(.system(size: 12, weight: .semibold))
@@ -2559,7 +2500,7 @@ struct SettingsView: View {
                         row(entry)
                     }
                     .padding(.vertical, 3)
-                    if index < min(entries.count, 5) - 1 { Divider() }
+                    if index < min(entries.count, 10) - 1 { Divider() }
                 }
             }
         }
@@ -2611,7 +2552,76 @@ struct SettingsView: View {
                     }
                 }
             }
-            .frame(maxWidth: .infinity, minHeight: 648, alignment: .top)
+            .frame(maxWidth: .infinity, alignment: .top)
+        }
+    }
+
+    private var statisticsVoiceSessionRankingPanel: some View {
+        GlassPanel {
+            VStack(alignment: .leading, spacing: 7) {
+                Label(
+                    localization.text("statistics.ranking.voice_sessions"),
+                    systemImage: "waveform"
+                )
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(.orange)
+
+                if settings.voiceSessionRanking.isEmpty {
+                    Text("statistics.voice_ranking.empty")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(Array(settings.voiceSessionRanking.prefix(10).enumerated()), id: \.element.id) {
+                        index, record in
+                        Button {
+                            selectedSection = .transcripts
+                        } label: {
+                            HStack(spacing: 7) {
+                                Text("\(index + 1)")
+                                    .foregroundStyle(.orange)
+                                    .frame(width: 18, alignment: .leading)
+                                Text(chartDurationText(
+                                    seconds: UsageStatisticsPresentation.wholeSeconds(record.duration)
+                                ))
+                                .monospacedDigit()
+                                Text("·").foregroundStyle(.secondary)
+                                Text(record.applicationName ?? localization.text(
+                                    "statistics.ranking.unknown_app"
+                                )).lineLimit(1)
+                                Spacer(minLength: 3)
+                                Text(voiceSessionDateText(record.endedAt))
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(.secondary)
+                                    .lineLimit(1)
+                                Image(systemName: "chevron.right")
+                                    .font(.caption2.weight(.semibold))
+                                    .foregroundStyle(.secondary)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.vertical, 5)
+                        if index < min(settings.voiceSessionRanking.count, 10) - 1 {
+                            Divider()
+                        }
+                    }
+                }
+
+                Button {
+                    selectedSection = .transcripts
+                } label: {
+                    HStack(spacing: 4) {
+                        Spacer()
+                        Text("statistics.ranking.view_all")
+                        Image(systemName: "chevron.right")
+                    }
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(Color.accentColor)
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 2)
+            }
         }
     }
 
@@ -4310,7 +4320,10 @@ private struct StatisticsHeatmap: View {
                 .padding(.trailing, 6)
             }
         }
-        .frame(height: 230)
+        // Reserve enough vertical space for all seven weekday rows, including
+        // the largest square cells and the month-label gutter. Without this
+        // explicit height the GeometryReader can collapse and clip rows.
+        .frame(height: 250, alignment: .top)
     }
 
     private func fillColor(for day: StatisticsCalendarDay) -> Color {
