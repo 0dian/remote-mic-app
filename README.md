@@ -13,11 +13,6 @@
 <table>
   <tr>
     <td align="center">
-      <a href="https://my.feishu.cn/docx/AgEhdekvKoVDUkxkdT0c7BDcnjb"><img src="Screenshots/community-entry-qrcode.png" alt="无线麦 APP 飞书固定入口" width="220"></a><br>
-      <strong>飞书固定入口</strong><br>
-      <a href="https://my.feishu.cn/docx/AgEhdekvKoVDUkxkdT0c7BDcnjb">点击打开最新加群页面</a>
-    </td>
-    <td align="center">
       <img src="Screenshots/wechat-group-qrcode.jpg" alt="无线麦 APP 微信群二维码" width="220"><br>
       <strong>微信群二维码</strong><br>
       微信扫码加入交流群
