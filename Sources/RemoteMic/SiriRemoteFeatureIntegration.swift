@@ -89,12 +89,19 @@ struct SiriRemotePowerSnapshot: Equatable {
     let source: String
 }
 
+enum SiriRemoteTouchFeedbackKind: Equatable {
+    case pointerMoved(deltaX: Double, deltaY: Double, speed: Double)
+    case scrolled(pixels: Double, speed: Double)
+    case clicked
+}
+
 final class SiriRemoteFeatureIntegration {
     var onConnection: ((SiriRemoteConnection) -> Void)?
     var onControlEvent: ((SiriRemoteControlEvent) -> Void)?
     var onSamples: (([Int16]) -> Void)?
     var onStatus: ((String) -> Void)?
     var onPowerSnapshot: ((SiriRemotePowerSnapshot) -> Void)?
+    var onTouchFeedback: ((SiriRemoteTouchFeedbackKind) -> Void)?
 
     #if SAYALL_SIRI_REMOTE_ENABLED && canImport(SayAllSiriRemote)
     private let feature: SayAllSiriRemoteFeature
@@ -126,6 +133,20 @@ final class SiriRemoteFeatureIntegration {
         }
         feature.onSamples = { [weak self] samples in self?.onSamples?(samples) }
         feature.onStatus = { [weak self] status in self?.onStatus?(status) }
+        feature.onTouchFeedback = { [weak self] feedback in
+            switch feedback {
+            case let .pointerMoved(deltaX, deltaY, speed):
+                self?.onTouchFeedback?(.pointerMoved(
+                    deltaX: deltaX,
+                    deltaY: deltaY,
+                    speed: speed
+                ))
+            case let .scrolled(pixels, speed):
+                self?.onTouchFeedback?(.scrolled(pixels: pixels, speed: speed))
+            case .clicked:
+                self?.onTouchFeedback?(.clicked)
+            }
+        }
         feature.onPowerSnapshot = { [weak self] snapshot in
             guard let model = Self.hostModel(snapshot.model),
                   let availability = SiriRemotePowerSnapshot.Availability(

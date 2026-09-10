@@ -512,6 +512,9 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     private lazy var siriRemoteFeature = SiriRemoteFeatureIntegration(
         logger: { AppLogger.shared.write($0) }
     )
+    private let siriRemoteCursorFeedback = SiriRemoteCursorFeedbackController(
+        logger: { AppLogger.shared.write($0) }
+    )
     private var appleRemoteProfileIDs: [SiriRemoteDeviceIdentity: UUID] = [:]
     private var connectedAppleRemoteProfileIDs = Set<UUID>()
     private var appleRemoteActiveButtons: [SiriRemoteDeviceIdentity: Set<RemoteButton>] = [:]
@@ -614,6 +617,9 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             self?.receiveAppleRemoteAudio(samples)
         }
         siriRemoteFeature.onStatus = { _ in }
+        siriRemoteFeature.onTouchFeedback = { [weak self] feedback in
+            self?.siriRemoteCursorFeedback.handle(feedback)
+        }
         siriRemoteFeature.onPowerSnapshot = { [weak self] snapshot in
             self?.handleAppleRemotePowerSnapshot(snapshot)
         }
@@ -920,6 +926,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         appleRemoteVoiceCaptureRetryWorkItem?.cancel()
         appleRemoteVoiceCaptureRetryWorkItem = nil
         siriRemoteFeature.stop()
+        siriRemoteCursorFeedback.stop()
         resetAllAppleRemoteState(reason: "app_stop")
 #endif
         bluetoothBridges.removeAll()
