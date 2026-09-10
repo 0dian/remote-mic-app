@@ -97,6 +97,8 @@
 - [ ] 连接、按键、统计和设置页在最小窗口下无回归；权限与隐私不再有独立侧边栏入口。
 - [ ] 公告成功、过期、404、超时和语言切换用例均通过；公告失败不阻塞设置页。
 
+自动化已覆盖：旧权限路由解析到统一设置页；分享入口选择设置页并展开底部模块；权限缺失时调用请求动作、已授权时使用精确系统设置 URL；诊断摘要只产生固定的脱敏状态字段，并各执行一次剪贴板写入与审计日志写入。自动化不能证明 macOS 接受 `x-apple.systempreferences` URL、真实剪贴板服务可用或 SwiftUI 滚动动画已到达目标，以上仍保留为人工验收项。
+
 ## 日志收集
 
 1. App 日志：`~/Library/Logs/RemoteMic/runtime.log`，重点搜索 `UPDATE CHECK`、`source=cloudflare_channel` 与 `HARDWARE ANNOUNCEMENT`。
