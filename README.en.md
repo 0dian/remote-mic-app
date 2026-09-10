@@ -204,7 +204,9 @@ When installing over an older release, the installer recognizes legacy `/Applica
 
 Read the [Troubleshooting Guide](TROUBLESHOOTING.en.md) first. The complete onboarding flow is in the [First-Install Guide](Resources/首次安装说明.en.md).
 
-For development, build, protocol, test, and release details, see the [Technical Documentation](TECHNICAL.en.md).
+Before developing any new feature, everyone—including the repository owner, maintainers, external contributors, and automated agents—must read and follow the canonical [New Feature Development Policy](FEATURE_DEVELOPMENT.md).
+
+For development, build, protocol, test, and release details, see the [Technical Documentation](TECHNICAL.en.md). Branch and pull-request management is defined in the [Branch and Commit Management Policy](BRANCH_MANAGEMENT.md).
 
 ## ⭐ Star History
 
