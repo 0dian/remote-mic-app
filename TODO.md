@@ -377,6 +377,7 @@
   - 2026-09-09：修复 Siri Remote 语音键被自定义映射开关拦截，以及音频 helper 尚未就绪时立即释放 Fn、无法唤醒输入法的问题；语音会话现在保持按下并做有限退避重试，正常松键继续无损排空尾音。私有 Siri Remote 指针与环形滚动增益同步提高。自动化与分发资产验证通过后仍需真实 A2854 和目标输入法验收。
   - 2026-09-09：增加 A2540 候选运行时与 `0x0314/0x0315` 双型号 HID/语音匹配，A2540 复用 A2854 图片和布局；触摸桥改为按 IOKit Product ID 严格绑定 Siri Remote，拒绝 Magic Mouse `0x0269`。安装器在既有 receipt/Helper/LaunchDaemon 存在时自动勾选 Siri Remote 可选组件。A2540 完整按键、触摸、语音与 Magic Mouse 共存真机矩阵完成前保持 `awaitingRealHardware`。
   - 2026-09-10：恢复 Siri Remote 移动/滚动视觉反馈的宿主桥接，指示器优先位于系统鼠标右下且不重叠，屏幕边缘自动换侧；触摸解释器增加径向/切向意图比较和单次 contact 模式锁，扩大外圈与滚动启动阈值，降低鼠标移动与圆周滚动互相误触。私有 Package、完整 Siri 宿主和无私有依赖社区构建自动化已通过，最终体感与视觉位置仍需签名包真机验收。
+  - 2026-09-11：候选修复左右 Command 语音注入缺少物理侧别标志的问题，并新增苹果遥控器连续语音旅程门禁；移动与滚动指示器改为 4 pt 安全间距、相同基础尺寸和相同速度缩放，鼠标停在公开 `AXPress` 元素或其最多四层父元素上时提供约 1.2 秒 OK 点击窗口，执行前再次确认光标未移走。面向用户的名称改为“苹果遥控器 Type-C / Lightning”；没有真实电量且充电状态未知时隐藏整个电池区域。公开 473 项、私有包 61 项、完整私有宿主 514 项和项目自检 44 项已通过，仍需真实遥控器、目标输入法、Accessibility 点击和签名包视觉验收，因此父任务保持未完成。
   - 2026-09-09：修复当前 macOS 将 `com.apple.PacketLogger.HCI` 授权规则物化为 `session-owner=false` 时被误判为弱规则，私有包 47 项测试通过；增加 A2854 电量的公开 IORegistry 兼容读取路径，当前机器未发现遥控器 `BatteryPercent`，因此仍按合同显示未知。公开宿主清理 SwiftPM 缓存后 460 项测试通过，Siri Remote + 组合动作/键位方案集成 App 构建并通过 `verify-app.sh`；真实 A2854 语音 PCM/最终文字和电量仍需正式签名包实机验收。
 - [x] 支持 Xiaomi Bluetooth Remote Control 2（RC001-MS）
   - 真机确认 RC001-MS 与 RC003-MS 使用相同的固件 `2671`、VID/PID `0x2717 / 0x32B8`、GATT Service、ATVV v1.0、16kHz IMA-ADPCM 和 120-byte frame；两款设备均已完成真实普通按键和 `STREAM_START → AUDIO → STREAM_STOP` 语音链路。

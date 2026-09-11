@@ -126,6 +126,8 @@ struct LocalizationTests {
         #expect(english["onboarding.remote.voice_button_mistake.detail"] == "This step checks a normal control button. Press the center OK button or an arrow button instead.")
         #expect(english["onboarding.voice_tool.weixin.title"] == "WeChat Input Method")
         #expect(english["onboarding.voice_tool.system_fn.conflict"] == "macOS is still using Fn")
+        #expect(english["remote.device.model.apple_siri_remote_a2854"] == "Apple Remote Type-C")
+        #expect(english["remote.device.model.apple_siri_remote_a2540"] == "Apple Remote Lightning")
 
         #expect(!english.isEmpty)
         for (key, value) in english {
@@ -149,6 +151,8 @@ struct LocalizationTests {
                 #expect(localized["onboarding.remote.voice_button_mistake.detail"] == "这一步检查普通控制键。请改为短按圆盘中间的确定键或任意方向键。")
                 #expect(localized["onboarding.voice_tool.weixin.title"] == "微信输入法")
                 #expect(localized["onboarding.voice_tool.system_fn.conflict"] == "系统仍在使用 Fn")
+                #expect(localized["remote.device.model.apple_siri_remote_a2854"] == "苹果遥控器 Type-C")
+                #expect(localized["remote.device.model.apple_siri_remote_a2540"] == "苹果遥控器 Lightning")
             }
             #expect(Set(localized.keys) == Set(english.keys))
             #expect(Set(localizedInfo.keys) == Set(englishInfo.keys))
