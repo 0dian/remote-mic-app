@@ -105,6 +105,18 @@ struct SettingsDiagnosticSnapshot: Equatable {
     }
 }
 
+enum RemoteBatteryPresentationPolicy {
+    static func shouldShowBattery(
+        model: XiaomiRemoteModel,
+        level: Int?,
+        powerState: RemotePowerState?
+    ) -> Bool {
+        guard model.isAppleSiriRemote else { return true }
+        guard level == nil else { return true }
+        return powerState == .charging || powerState == .externalPower
+    }
+}
+
 enum SettingsPageBehavior {
     static func visibleSection(for requestedSection: SettingsSection) -> SettingsSection {
         requestedSection == .permissions ? .about : requestedSection
@@ -1578,6 +1590,12 @@ struct SettingsView: View {
         let selected = settings.selectedRemoteProfileID == profile.id
         let connected = model.isRemoteConnected(profile.id)
         let batteryLevel = model.batteryLevel(for: profile.id)
+        let powerState = model.powerState(for: profile.id)
+        let showsBattery = RemoteBatteryPresentationPolicy.shouldShowBattery(
+            model: profile.model,
+            level: batteryLevel,
+            powerState: powerState
+        )
         return Button {
             model.selectRemoteProfile(profile.id)
         } label: {
@@ -1596,18 +1614,16 @@ struct SettingsView: View {
                 ViewThatFits(in: .horizontal) {
                     HStack(spacing: 7) {
                         remoteConnectionLabel(connected: connected)
-                        remoteBatteryLabel(
-                            level: batteryLevel,
-                            powerState: model.powerState(for: profile.id)
-                        )
+                        if showsBattery {
+                            remoteBatteryLabel(level: batteryLevel, powerState: powerState)
+                        }
                     }
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 7) {
                             remoteConnectionLabel(connected: connected)
-                            remoteBatteryLabel(
-                                level: batteryLevel,
-                                powerState: model.powerState(for: profile.id)
-                            )
+                            if showsBattery {
+                                remoteBatteryLabel(level: batteryLevel, powerState: powerState)
+                            }
                         }
                     }
                 }

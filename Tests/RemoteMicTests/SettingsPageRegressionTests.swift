@@ -850,6 +850,8 @@ struct SettingsPageRegressionTests {
         #expect(chinese.contains(#""remote.device.model.rc003" = "小米蓝牙遥控器 2 Pro";"#))
         #expect(english.contains(#""remote.device.model.rc001" = "Xiaomi Bluetooth Remote 2";"#))
         #expect(english.contains(#""remote.device.model.rc003" = "Xiaomi Bluetooth Remote 2 Pro";"#))
+        #expect(chinese.contains(#""remote.device.model.apple_siri_remote_a2854" = "苹果遥控器 Type-C";"#))
+        #expect(chinese.contains(#""remote.device.model.apple_siri_remote_a2540" = "苹果遥控器 Lightning";"#))
 
         let cardStart = try #require(settingsSource.range(of: "private func remoteDeviceCard"))
         let cardEnd = try #require(settingsSource.range(
@@ -860,7 +862,8 @@ struct SettingsPageRegressionTests {
         #expect(cardSource.contains("ViewThatFits(in: .horizontal)"))
         #expect(cardSource.contains("fillsWidth ? nil : 232"))
         #expect(cardSource.contains("remoteBatteryLabel("))
-        #expect(cardSource.contains("powerState: model.powerState(for: profile.id)"))
+        #expect(cardSource.contains("let powerState = model.powerState(for: profile.id)"))
+        #expect(cardSource.contains("if showsBattery"))
         #expect(cardSource.contains("Image(systemName: \"bolt.fill\")"))
         #expect(!cardSource.contains("Label(power.text"))
         #expect(!cardSource.contains("remote.device.power.rechargeable"))
@@ -887,6 +890,39 @@ struct SettingsPageRegressionTests {
 
         #expect(appSource.contains(
             "fileMenu.addItem(menuItem(\"menu.open_log_folder\", action: #selector(showLog)))"
+        ))
+    }
+
+    @Test func siriRemoteBatteryPresentationHidesOnlyWhenEveryPowerSignalIsUnavailable() {
+        #expect(!RemoteBatteryPresentationPolicy.shouldShowBattery(
+            model: .appleSiriRemoteA2854,
+            level: nil,
+            powerState: nil
+        ))
+        #expect(!RemoteBatteryPresentationPolicy.shouldShowBattery(
+            model: .appleSiriRemoteA2540,
+            level: nil,
+            powerState: .unknown
+        ))
+        #expect(!RemoteBatteryPresentationPolicy.shouldShowBattery(
+            model: .appleSiriRemoteA2854,
+            level: nil,
+            powerState: .onBattery
+        ))
+        #expect(RemoteBatteryPresentationPolicy.shouldShowBattery(
+            model: .appleSiriRemoteA2854,
+            level: 75,
+            powerState: .unknown
+        ))
+        #expect(RemoteBatteryPresentationPolicy.shouldShowBattery(
+            model: .appleSiriRemoteA2540,
+            level: nil,
+            powerState: .charging
+        ))
+        #expect(RemoteBatteryPresentationPolicy.shouldShowBattery(
+            model: .rc003,
+            level: nil,
+            powerState: nil
         ))
     }
 

@@ -519,6 +519,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
     private var connectedAppleRemoteProfileIDs = Set<UUID>()
     private var appleRemoteActiveButtons: [SiriRemoteDeviceIdentity: Set<RemoteButton>] = [:]
     private var appleRemoteActiveControlIDs: [SiriRemoteDeviceIdentity: Set<String>] = [:]
+    private var appleRemoteHoverClickDevices = Set<SiriRemoteDeviceIdentity>()
     private var appleRemoteGestureRecognizers:
         [SiriRemoteDeviceIdentity: RemoteButtonGestureRecognizer] = [:]
     private var appleRemoteDoubleClickTimers:
@@ -2564,6 +2565,26 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             }
             return
         }
+        if control == .select {
+            let nativeEdge: RemoteEventEdge = event.phase == .began ? .down : .up
+            if event.phase == .began,
+               siriRemoteCursorFeedback.activateHoveredElementIfAvailable() {
+                appleRemoteHoverClickDevices.insert(event.device)
+                hidEventSuppressor.arm(nativeEvents: control.nativeEvents, edge: nativeEdge)
+                AppLogger.shared.write(
+                    "APPLE REMOTE HOVER_CLICK phase=began result=activated action=ax_press"
+                )
+                return
+            }
+            if event.phase == .ended,
+               appleRemoteHoverClickDevices.remove(event.device) != nil {
+                hidEventSuppressor.arm(nativeEvents: control.nativeEvents, edge: nativeEdge)
+                AppLogger.shared.write(
+                    "APPLE REMOTE HOVER_CLICK phase=ended result=consumed"
+                )
+                return
+            }
+        }
         guard settings.customMappingEnabled else {
             if event.phase == .began {
                 AppLogger.shared.write(
@@ -3344,6 +3365,8 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         appleRemoteGestureRecognizers.removeValue(forKey: device)
         appleRemoteActiveButtons.removeValue(forKey: device)
         appleRemoteActiveControlIDs.removeValue(forKey: device)
+        appleRemoteHoverClickDevices.remove(device)
+        siriRemoteCursorFeedback.cancelInteraction(reason: "device_reset")
         endAppleRemoteVoice(for: device, reason: reason)
         refreshAppleRemoteActiveButtons()
         refreshAppleRemoteActiveControlIDs()
@@ -3358,6 +3381,7 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
         connectedAppleRemoteProfileIDs.removeAll()
         appleRemoteActiveButtons.removeAll()
         appleRemoteActiveControlIDs.removeAll()
+        appleRemoteHoverClickDevices.removeAll()
         activeAppleRemoteControlIDs = []
         refreshBluetoothPresentation()
     }
@@ -4978,7 +5002,8 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
                 : "voice_button.status.\(mode.rawValue)_released"
         )
         AppLogger.shared.write(
-            "VOICE KEY mode=\(mode.rawValue) \(shouldHold ? "DOWN" : "UP")"
+            "VOICE KEY mode=\(mode.rawValue) edge=\(shouldHold ? "down" : "up") " +
+                "result=event_submitted target_response=unknown"
         )
         return true
     }
@@ -5029,8 +5054,9 @@ final class BridgeAppModel: ObservableObject, XiaomiBluetoothBridgeDelegate {
             "voice_button.status.\(heldVoiceKeyMode.rawValue)_released"
         )
         AppLogger.shared.write(
-            "VOICE KEY mode=\(heldVoiceKeyMode.rawValue) UP" +
-                (forcedAfterPermissionChange ? " forced_after_permission_change" : "")
+            "VOICE KEY mode=\(heldVoiceKeyMode.rawValue) edge=up " +
+                "result=event_submitted target_response=unknown" +
+                (forcedAfterPermissionChange ? " forced_after_permission_change=true" : "")
         )
         return true
     }
